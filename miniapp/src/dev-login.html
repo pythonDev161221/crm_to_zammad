@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dev Login</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f1f1f1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 28px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    h2 { font-size: 20px; margin-bottom: 6px; }
+    .subtitle { color: #999; font-size: 13px; margin-bottom: 24px; }
+    .user-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 14px;
+      border: 2px solid #e8e8e8;
+      border-radius: 12px;
+      background: #fff;
+      cursor: pointer;
+      margin-bottom: 10px;
+      font-size: 15px;
+      transition: border-color 0.15s, background 0.15s;
+      text-align: left;
+    }
+    .user-btn:hover { border-color: #2481cc; background: #f0f7ff; }
+    .avatar {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .info { flex: 1; }
+    .name { font-weight: 600; }
+    .role { font-size: 12px; color: #999; }
+    .badge {
+      font-size: 11px; padding: 2px 8px;
+      border-radius: 20px; font-weight: 500;
+    }
+    .error { color: #dc3545; font-size: 13px; margin-top: 12px; display: none; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h2>Dev Login</h2>
+  <p class="subtitle">Only available in DEBUG mode. Pick a user to test as.</p>
+
+  <div id="user-list">Loading users...</div>
+  <div class="error" id="error"></div>
+</div>
+
+<script>
+const ROLE_COLORS = {
+  admin:           { bg: '#fde8ff', icon: '👑' },
+  station_manager: { bg: '#fff3cd', icon: '🏭' },
+  it_worker:       { bg: '#d4edda', icon: '🔧' },
+  worker:          { bg: '#e8f4fd', icon: '👷' },
+};
+
+const ROLE_LABELS = {
+  admin: 'Admin',
+  station_manager: 'Station Manager',
+  it_worker: 'IT Worker',
+  worker: 'Worker',
+};
+
+async function loadUsers() {
+  const res = await fetch('/dev/users/');
+  if (!res.ok) {
+    document.getElementById('user-list').innerHTML =
+      '<p style="color:#dc3545">Dev mode not available.</p>';
+    return;
+  }
+  const users = await res.json();
+  const list = document.getElementById('user-list');
+
+  if (!users.length) {
+    list.innerHTML = '<p style="color:#999;font-size:14px">No users yet. Create some in Django admin first.</p>';
+    return;
+  }
+
+  list.innerHTML = users.map(u => {
+    const meta = ROLE_COLORS[u.role] || { bg: '#eee', icon: '👤' };
+    return `
+      <button class="user-btn" onclick="loginAs(${u.id})">
+        <div class="avatar" style="background:${meta.bg}">${meta.icon}</div>
+        <div class="info">
+          <div class="name">${u.name}</div>
+          <div class="role">${ROLE_LABELS[u.role] || u.role} · @${u.username}</div>
+        </div>
+      </button>
+    `;
+  }).join('');
+}
+
+async function loginAs(userId) {
+  const err = document.getElementById('error');
+  err.style.display = 'none';
+  try {
+    const res = await fetch('/dev/login/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    if (!res.ok) throw new Error('Login failed');
+    const data = await res.json();
+    localStorage.setItem('dev_access_token', data.access);
+    window.location.href = '/';
+  } catch (e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+  }
+}
+
+loadUsers();
+</script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Tech Support</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Loading -->
+  <div id="screen-loading" class="screen active">
+    <div class="loading">Connecting...</div>
+  </div>
+
+  <!-- Task List -->
+  <div id="screen-tasks" class="screen">
+    <div class="header">
+      <h1>My Tasks</h1>
+    </div>
+    <div id="tasks-list" class="card-list"></div>
+    <button id="fab-new-task" class="fab" onclick="showCreateTask()" style="display:none">+</button>
+  </div>
+
+  <!-- Task Detail -->
+  <div id="screen-task-detail" class="screen">
+    <div class="header">
+      <h1 id="task-detail-title">Task</h1>
+    </div>
+    <div id="task-detail-body"></div>
+  </div>
+
+  <!-- Create Task -->
+  <div id="screen-create-task" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('screen-tasks')">&#8592; Back</button>
+      <h1>New Request</h1>
+    </div>
+    <div class="form">
+      <div class="field">
+        <label>Title *</label>
+        <input id="new-task-title" type="text" placeholder="Briefly describe the problem">
+      </div>
+      <div class="field">
+        <label>Details</label>
+        <textarea id="new-task-desc" placeholder="Any additional information..."></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="submitCreateTask()">Submit</button>
+    </div>
+  </div>
+
+  <!-- Delegate Ticket -->
+  <div id="screen-delegate" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('screen-task-detail')">&#8592; Back</button>
+      <h1>Delegate</h1>
+    </div>
+    <div class="form">
+      <input type="hidden" id="delegate-task-id">
+      <div class="field">
+        <label>Select IT Worker</label>
+        <div id="delegate-worker-list" class="card-list" style="padding:0"></div>
+      </div>
+      <div class="field">
+        <label>Notes for them</label>
+        <textarea id="delegate-notes" placeholder="What should they do?"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="submitDelegate()">Send</button>
+    </div>
+  </div>
+
+</div>
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>
