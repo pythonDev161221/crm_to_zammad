@@ -1,25 +1,31 @@
 import { api, setToken } from '/static/api.js';
 
 const tg = window.Telegram?.WebApp;
+const inTelegram = !!(tg?.initData);  // true only inside real Telegram
 const app = document.getElementById('app');
+
+function tgAlert(msg) { inTelegram ? tg.showAlert(msg) : alert(msg); }
+function tgConfirm(msg) {
+  return inTelegram
+    ? new Promise(resolve => tg.showConfirm(msg, resolve))
+    : Promise.resolve(confirm(msg));
+}
 
 let currentUser = null;
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
-function showScreen(id) {
+window.showScreen = function(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const screen = document.getElementById(id);
   if (screen) screen.classList.add('active');
-  tg?.BackButton[id === 'screen-tasks' ? 'hide' : 'show']();
+  if (inTelegram) tg.BackButton[id === 'screen-tasks' ? 'hide' : 'show']();
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 async function init() {
-  tg?.ready();
-  tg?.expand();
-  tg?.BackButton.onClick(() => showScreen('screen-tasks'));
+  if (inTelegram) { tg.ready(); tg.expand(); tg.BackButton.onClick(() => showScreen('screen-tasks')); }
 
   showScreen('screen-loading');
 
@@ -213,7 +219,7 @@ window.updateTicket = async function(ticketId, newStatus) {
     const taskId = document.getElementById('screen-task-detail').dataset.taskId;
     await openTask(taskId);
   } catch (e) {
-    tg?.showAlert(e.message);
+    tgAlert(e.message);
   }
 };
 
@@ -225,22 +231,21 @@ window.assignSelf = async function(taskId) {
     });
     await openTask(taskId);
   } catch (e) {
-    tg?.showAlert(e.message);
+    tgAlert(e.message);
   }
 };
 
 window.resolveTask = async function(taskId) {
-  tg?.showConfirm('Mark this task as resolved and send to Zammad?', async (confirmed) => {
-    if (!confirmed) return;
-    try {
-      await api.resolveTask(taskId);
-      tg?.showAlert('Task resolved and archived to Zammad.');
-      await loadTasks();
-      showScreen('screen-tasks');
-    } catch (e) {
-      tg?.showAlert(e.message);
-    }
-  });
+  const confirmed = await tgConfirm('Mark this task as resolved and send to Zammad?');
+  if (!confirmed) return;
+  try {
+    await api.resolveTask(taskId);
+    tgAlert('Task resolved and archived to Zammad.');
+    await loadTasks();
+    showScreen('screen-tasks');
+  } catch (e) {
+    tgAlert(e.message);
+  }
 };
 
 window.submitComment = async function(taskId) {
@@ -252,7 +257,7 @@ window.submitComment = async function(taskId) {
     input.value = '';
     await openTask(taskId);
   } catch (e) {
-    tg?.showAlert(e.message);
+    tgAlert(e.message);
   }
 };
 
@@ -297,7 +302,7 @@ window.submitDelegate = async function() {
   const notes = document.getElementById('delegate-notes').value.trim();
 
   if (!selectedDelegateWorkerId) {
-    tg?.showAlert('Please select an IT worker.');
+    tgAlert('Please select an IT worker.');
     return;
   }
 
@@ -310,7 +315,7 @@ window.submitDelegate = async function() {
     await openTask(taskId);
     showScreen('screen-task-detail');
   } catch (e) {
-    tg?.showAlert(e.message);
+    tgAlert(e.message);
   }
 };
 
@@ -327,7 +332,7 @@ window.submitCreateTask = async function() {
   const description = document.getElementById('new-task-desc').value.trim();
 
   if (!title) {
-    tg?.showAlert('Please enter a title.');
+    tgAlert('Please enter a title.');
     return;
   }
 
@@ -336,7 +341,7 @@ window.submitCreateTask = async function() {
     await loadTasks();
     showScreen('screen-tasks');
   } catch (e) {
-    tg?.showAlert(e.message);
+    tgAlert(e.message);
   }
 };
 
@@ -389,16 +394,15 @@ window.showStationWorkers = async function() {
   }
 };
 
-window.removeWorker = function(id, name) {
-  tg?.showConfirm(`Deactivate ${name}?`, async (confirmed) => {
-    if (!confirmed) return;
-    try {
-      await api.removeStationWorker(id);
-      await showStationWorkers();
-    } catch (e) {
-      tg?.showAlert(e.message);
-    }
-  });
+window.removeWorker = async function(id, name) {
+  const confirmed = await tgConfirm(`Deactivate ${name}?`);
+  if (!confirmed) return;
+  try {
+    await api.removeStationWorker(id);
+    await showStationWorkers();
+  } catch (e) {
+    tgAlert(e.message);
+  }
 };
 
 window.submitAddWorker = async function() {
@@ -408,17 +412,17 @@ window.submitAddWorker = async function() {
   const password = document.getElementById('new-worker-password').value.trim();
 
   if (!username || !password) {
-    tg?.showAlert('Username and password are required.');
+    tgAlert('Username and password are required.');
     return;
   }
 
   try {
     await api.createStationWorker({ username, password, first_name, last_name });
-    tg?.showAlert(`Account created for ${first_name || username}.`);
+    tgAlert(`Account created for ${first_name || username}.`);
     showScreen('screen-station-workers');
     await showStationWorkers();
   } catch (e) {
-    tg?.showAlert(e.message);
+    tgAlert(e.message);
   }
 };
 
@@ -430,19 +434,19 @@ window.submitChangePassword = async function() {
   const confirm = document.getElementById('confirm-password').value;
 
   if (new_password !== confirm) {
-    tg?.showAlert('New passwords do not match.');
+    tgAlert('New passwords do not match.');
     return;
   }
 
   try {
     await api.changePassword(old_password, new_password);
-    tg?.showAlert('Password changed successfully.');
+    tgAlert('Password changed successfully.');
     document.getElementById('old-password').value = '';
     document.getElementById('new-password').value = '';
     document.getElementById('confirm-password').value = '';
     showScreen('screen-tasks');
   } catch (e) {
-    tg?.showAlert(e.message);
+    tgAlert(e.message);
   }
 };
 
