@@ -47,4 +47,13 @@ export const api = {
 
   // IT Workers
   getITWorkers: () => request('GET', '/it-workers/'),
+
+  // Station management
+  getStationWorkers: () => request('GET', '/station/workers/'),
+  createStationWorker: (data) => request('POST', '/station/workers/', data),
+  removeStationWorker: (id) => request('DELETE', `/station/workers/${id}/`),
+
+  // Password change
+  changePassword: (old_password, new_password) =>
+    request('POST', '/auth/change-password/', { old_password, new_password }),
 };

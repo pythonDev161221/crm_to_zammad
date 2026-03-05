@@ -24,6 +24,15 @@ class Station(models.Model):
     manager = models.OneToOneField(
         User, on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_station'
     )
+    deputy = models.OneToOneField(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='deputy_station'
+    )
+
+    def is_managed_by(self, user):
+        return user.pk in (
+            self.manager_id,
+            self.deputy_id,
+        )
 
     def __str__(self):
         return self.name

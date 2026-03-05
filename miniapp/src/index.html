@@ -19,6 +19,8 @@
   <div id="screen-tasks" class="screen">
     <div class="header">
       <h1>My Tasks</h1>
+      <button id="btn-station" class="back-btn" onclick="showStationWorkers()" style="display:none">AZS &#9881;</button>
+      <button class="back-btn" onclick="showScreen('screen-change-password')" title="Change password">&#128273;</button>
     </div>
     <div id="tasks-list" class="card-list"></div>
     <button id="fab-new-task" class="fab" onclick="showCreateTask()" style="display:none">+</button>
@@ -68,6 +70,66 @@
         <textarea id="delegate-notes" placeholder="What should they do?"></textarea>
       </div>
       <button class="btn btn-primary" onclick="submitDelegate()">Send</button>
+    </div>
+  </div>
+
+  <!-- Station Workers (manager/deputy) -->
+  <div id="screen-station-workers" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('screen-tasks')">&#8592; Back</button>
+      <h1 id="station-name">My Station</h1>
+    </div>
+    <div id="station-workers-list" class="card-list"></div>
+    <button class="fab" onclick="showScreen('screen-add-worker')">+</button>
+  </div>
+
+  <!-- Add Worker -->
+  <div id="screen-add-worker" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('screen-station-workers')">&#8592; Back</button>
+      <h1>Add Worker</h1>
+    </div>
+    <div class="form">
+      <div class="field">
+        <label>First Name</label>
+        <input id="new-worker-first" type="text" placeholder="Ivan">
+      </div>
+      <div class="field">
+        <label>Last Name</label>
+        <input id="new-worker-last" type="text" placeholder="Petrov">
+      </div>
+      <div class="field">
+        <label>Username *</label>
+        <input id="new-worker-username" type="text" placeholder="ivan_petrov">
+      </div>
+      <div class="field">
+        <label>Temporary Password *</label>
+        <input id="new-worker-password" type="password" placeholder="min 6 characters">
+      </div>
+      <button class="btn btn-primary" onclick="submitAddWorker()">Create Account</button>
+    </div>
+  </div>
+
+  <!-- Change Password -->
+  <div id="screen-change-password" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('screen-tasks')">&#8592; Back</button>
+      <h1>Change Password</h1>
+    </div>
+    <div class="form">
+      <div class="field">
+        <label>Current Password</label>
+        <input id="old-password" type="password" placeholder="Current password">
+      </div>
+      <div class="field">
+        <label>New Password</label>
+        <input id="new-password" type="password" placeholder="Min 6 characters">
+      </div>
+      <div class="field">
+        <label>Confirm New Password</label>
+        <input id="confirm-password" type="password" placeholder="Repeat new password">
+      </div>
+      <button class="btn btn-primary" onclick="submitChangePassword()">Save</button>
     </div>
   </div>
 

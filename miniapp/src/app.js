@@ -72,6 +72,9 @@ function renderTaskList(tasks) {
   const fab = document.getElementById('fab-new-task');
   fab.style.display = role === 'worker' ? 'flex' : 'none';
 
+  const btnStation = document.getElementById('btn-station');
+  btnStation.style.display = role === 'station_manager' ? 'inline' : 'none';
+
   if (!tasks.length) {
     list.innerHTML = '<div class="empty">No tasks yet.</div>';
     return;
@@ -358,6 +361,90 @@ function showError(msg) {
     <div>⚠️</div><div>${escHtml(msg)}</div>
   </div>`;
 }
+
+// ── Station Workers ───────────────────────────────────────────────────────────
+
+window.showStationWorkers = async function() {
+  showScreen('screen-station-workers');
+  const list = document.getElementById('station-workers-list');
+  list.innerHTML = '<div class="loading">Loading...</div>';
+
+  try {
+    const workers = await api.getStationWorkers();
+    if (!workers.length) {
+      list.innerHTML = '<div class="empty">No workers yet. Add the first one.</div>';
+      return;
+    }
+    list.innerHTML = workers.map(w => `
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="card-title">${escHtml(w.name)}</div>
+          <div class="card-meta">@${escHtml(w.username)} · ${w.is_active ? 'Active' : '<span style="color:#dc3545">Deactivated</span>'}</div>
+        </div>
+        ${w.is_active ? `<button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeWorker(${w.id}, '${escHtml(w.name)}')">Remove</button>` : ''}
+      </div>
+    `).join('');
+  } catch (e) {
+    list.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+};
+
+window.removeWorker = function(id, name) {
+  tg?.showConfirm(`Deactivate ${name}?`, async (confirmed) => {
+    if (!confirmed) return;
+    try {
+      await api.removeStationWorker(id);
+      await showStationWorkers();
+    } catch (e) {
+      tg?.showAlert(e.message);
+    }
+  });
+};
+
+window.submitAddWorker = async function() {
+  const first_name = document.getElementById('new-worker-first').value.trim();
+  const last_name = document.getElementById('new-worker-last').value.trim();
+  const username = document.getElementById('new-worker-username').value.trim();
+  const password = document.getElementById('new-worker-password').value.trim();
+
+  if (!username || !password) {
+    tg?.showAlert('Username and password are required.');
+    return;
+  }
+
+  try {
+    await api.createStationWorker({ username, password, first_name, last_name });
+    tg?.showAlert(`Account created for ${first_name || username}.`);
+    showScreen('screen-station-workers');
+    await showStationWorkers();
+  } catch (e) {
+    tg?.showAlert(e.message);
+  }
+};
+
+// ── Change Password ───────────────────────────────────────────────────────────
+
+window.submitChangePassword = async function() {
+  const old_password = document.getElementById('old-password').value;
+  const new_password = document.getElementById('new-password').value;
+  const confirm = document.getElementById('confirm-password').value;
+
+  if (new_password !== confirm) {
+    tg?.showAlert('New passwords do not match.');
+    return;
+  }
+
+  try {
+    await api.changePassword(old_password, new_password);
+    tg?.showAlert('Password changed successfully.');
+    document.getElementById('old-password').value = '';
+    document.getElementById('new-password').value = '';
+    document.getElementById('confirm-password').value = '';
+    showScreen('screen-tasks');
+  } catch (e) {
+    tg?.showAlert(e.message);
+  }
+};
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 

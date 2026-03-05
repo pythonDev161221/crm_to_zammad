@@ -18,4 +18,11 @@ urlpatterns = [
 
     # IT Workers list (for delegation)
     path('it-workers/', views.ITWorkerListView.as_view(), name='it-workers'),
+
+    # Station management
+    path('station/workers/', views.StationWorkersView.as_view(), name='station-workers'),
+    path('station/workers/<int:pk>/', views.StationWorkerDeleteView.as_view(), name='station-worker-delete'),
+
+    # Change password
+    path('auth/change-password/', views.ChangePasswordView.as_view(), name='change-password'),
 ]
