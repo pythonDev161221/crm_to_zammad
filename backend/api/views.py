@@ -22,7 +22,10 @@ class MeView(APIView):
 
 
 class TicketListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), IsWorker()]
+        return [IsAuthenticated()]
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -75,6 +78,10 @@ class TicketResolveView(APIView):
 
         if ticket.status == Ticket.Status.RESOLVED:
             return Response({'detail': 'Ticket already resolved.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        tasks = ticket.tasks.all()
+        if not tasks.exists() or tasks.exclude(status=Task.Status.DONE).exists():
+            return Response({'detail': 'All tasks must be done before resolving.'}, status=status.HTTP_400_BAD_REQUEST)
 
         ticket.status = Ticket.Status.RESOLVED
         ticket.resolved_at = timezone.now()
