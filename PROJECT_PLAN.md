@@ -2,7 +2,7 @@
 
 ## Overview
 Internal tech support system. Workers report problems via Telegram Mini App.
-IT Workers manage and resolve them in Django. Resolved tasks archive to Zammad for analytics.
+IT Workers manage and resolve them. Resolved tickets archive to Zammad for analytics.
 
 ---
 
@@ -11,10 +11,10 @@ IT Workers manage and resolve them in Django. Resolved tasks archive to Zammad f
 | Part | Technology |
 |---|---|
 | Backend | Django + DRF + PostgreSQL |
-| Auth | JWT via Telegram initData |
-| Frontend | Telegram Mini App |
-| Archive | Zammad (write-only) |
-| Async | None (synchronous Zammad push) |
+| Auth | JWT via Telegram initData (workers) / username+password (staff) |
+| Frontend | Telegram Mini App (vanilla JS) |
+| Archive | Zammad (live mirror for agents/groups + snapshot archive for tickets) |
+| Async | None — synchronous Zammad push + management command for retries |
 
 ---
 
@@ -24,12 +24,12 @@ IT Workers manage and resolve them in Django. Resolved tasks archive to Zammad f
 crm_to_zammad/
 ├── backend/
 │   ├── config/            # settings, urls, wsgi
-│   ├── users/             # User model + roles
-│   ├── tasks/             # Task + Ticket + Comment models
-│   ├── zammad_bridge/     # Zammad API client + push logic
-│   └── api/               # DRF serializers, views, routers
-├── miniapp/               # Telegram Mini App (HTML/JS or React)
-│   └── src/
+│   ├── users/             # User, Station, Company models
+│   ├── tasks/             # Ticket, Task, Comment, CommentPhoto models
+│   ├── zammad_bridge/     # Zammad API client, push logic, agent sync
+│   └── api/               # DRF serializers, views, urls, permissions
+├── miniapp/
+│   └── src/               # index.html, app.js, api.js, style.css
 └── docs/
 ```
 
@@ -39,53 +39,93 @@ crm_to_zammad/
 
 | Role | Permissions |
 |---|---|
-| Admin | Full access, manage all users |
-| Station Manager | Manage workers at their station |
-| IT Worker | Handle tickets within tasks, create child tickets |
-| Worker | Report problems, view own tasks and comments |
+| Admin | Full access, manage all users, companies, stations via Django Admin |
+| Station Manager | Manage workers at their station(s), add/remove deputies |
+| IT Worker | Handle tasks within tickets, delegate, resolve |
+| Worker | Report problems, view own tickets, comment |
 
 ---
 
 ## Core Models
 
-### Task
+### Company
 ```
 - id
-- created_by       FK → Worker
+- name          must match Zammad Group name exactly
+```
+
+### Station
+```
+- id
+- name          must match Zammad Organization name exactly
+- company       FK → Company
+- manager       FK → User (one manager can manage many stations)
+- deputies      M2M → User (many deputies per station)
+```
+
+### User
+```
+- id
+- role          admin / station_manager / it_worker / worker
+- telegram_id   for Telegram auth (nullable)
+- station       FK → Station (for workers)
+- companies     M2M → Company (for IT workers only, assigned by admin)
+                IT worker with no companies = no access to any tickets
+```
+
+### Ticket  ← maps to Zammad Ticket
+```
+- id
+- created_by    FK → Worker
 - title
 - description
-- status           open / in_progress / resolved
-- zammad_synced    bool (default False)
+- status        open / in_progress / resolved
+- zammad_synced bool (default False)
 - created_at
 - resolved_at
 ```
 
-### Ticket
+### Task  ← maps to Zammad Article (internal)
 ```
 - id
-- task             FK → Task
-- assigned_to      FK → IT Worker
-- status           open / in_progress / done
+- ticket        FK → Ticket
+- assigned_to   FK → IT Worker
+- status        open / in_progress / done
 - notes
-- started_at
-- finished_at
+- started_at    set automatically on in_progress
+- finished_at   set automatically on done
 ```
 
-### Comment
+### Comment  ← maps to Zammad Article
 ```
 - id
-- task             FK → Task
-- author           FK → User
-- text
+- ticket        FK → Ticket
+- author        FK → User
+- text          (blank allowed for photo-only comments)
+- is_internal   bool — if True: IT staff only, not visible to workers
 - created_at
+```
+
+### CommentPhoto
+```
+- id
+- comment       FK → Comment
+- image         ImageField → /media/comments/
 ```
 
 ---
 
-## Visibility Rule
-- Worker who created a Task can always see it and all its Tickets
-- IT Worker can see a Task only if they own a Ticket within it
-- IT Worker C (no Ticket in Task X) cannot see Task X
+## Visibility Rules
+
+| Role | Sees |
+|---|---|
+| Worker | Only their own tickets |
+| IT Worker | Open tickets from their companies' stations + tickets they have a task in |
+| Station Manager | All tickets |
+| Admin | All tickets |
+
+- Workers never see `is_internal=True` comments
+- IT workers assigned to no companies cannot see any open tickets
 
 ---
 
@@ -93,18 +133,20 @@ crm_to_zammad/
 
 ```
 1. Worker reports problem
-   → Task created (status: open)
+   → Ticket created (status: open)
 
-2. IT Worker A assigned a Ticket in that Task
-   → Task status: in_progress
+2. IT Worker sees open ticket (filtered by their company)
+   → Takes it: Task created assigned to themselves (status: open)
 
-3. IT Worker A needs help
-   → Creates Ticket for IT Worker B in same Task
-   → Both A and B can now see full Task + all Tickets
+3. IT Worker needs help
+   → Delegates: creates Task for another IT Worker in same Ticket
+   → Both can now see the full Ticket + all Tasks + all Comments
 
-4. Workers comment, update notes, mark Tickets done
+4. Workers and IT workers chat via Comments
+   → Workers post public comments (photos allowed)
+   → IT workers post internal or public comments (photos allowed)
 
-5. All Tickets done → IT Worker A resolves Task
+5. All Tasks done → IT Worker resolves Ticket
    → Synchronous push to Zammad
 
 6. Analytics workers read Zammad for productivity reports
@@ -114,56 +156,88 @@ crm_to_zammad/
 
 ## Zammad Integration
 
+### Ticket push (on resolve)
 ```
-Task resolved
+Ticket resolved
     ↓
-push_to_zammad(task)
+push_to_zammad(ticket)
     ↓
-POST /api/v1/tickets        → creates Zammad Ticket from Task
-POST /api/v1/ticket_articles → one Article per Ticket (per IT Worker)
+get_or_create Group (= Company name)
+get_or_create Organization (= Station name)
     ↓
-Success → task.zammad_synced = True
-Fail    → task.zammad_synced = False
+POST /api/v1/tickets        → Zammad Ticket (group=company, org=station)
+POST /api/v1/ticket_articles → one Article per Task (internal=True)
+POST /api/v1/ticket_articles → one Article per Comment (internal matches is_internal)
+    ↓
+Success → ticket.zammad_synced = True
+Fail    → ticket.zammad_synced = False
     ↓
 Retry: python manage.py sync_to_zammad
 ```
 
-Zammad is a **snapshot at resolution time**. Not a live mirror.
-Django is always the source of truth.
+### Zammad mapping
+| Our model | Zammad concept |
+|---|---|
+| Company | Group |
+| Station | Organization |
+| Worker | Customer |
+| IT Worker | Agent |
+| Ticket | Ticket |
+| Task | Article (internal) |
+| Comment | Article (internal or public) |
+
+### Agent sync (live mirror)
+- When IT worker created in Django Admin → Agent created in Zammad
+- When IT worker's companies change → Agent's Zammad group membership updated
+- Failures show WARNING in Django Admin, do not block the save
 
 ---
 
-## Telegram Mini App
+## API Endpoints
 
-- Worker opens Mini App in Telegram
-- Django validates Telegram `initData`, issues JWT
-- Workers: see tasks, report new problems, read comments
-- No passwords needed for workers
+| Method | URL | Description |
+|---|---|---|
+| GET/POST | `/api/tickets/` | List / create tickets |
+| GET | `/api/tickets/<id>/` | Ticket detail |
+| POST | `/api/tickets/<id>/resolve/` | Resolve ticket → push to Zammad |
+| POST | `/api/tickets/<id>/tasks/` | Create task (IT worker takes / delegates) |
+| PATCH | `/api/tasks/<id>/` | Update task status |
+| POST | `/api/tickets/<id>/comments/` | Add comment (multipart, supports photos) |
+| GET | `/api/it-workers/?ticket_id=X` | List IT workers eligible for ticket |
+| GET/POST | `/api/station/workers/` | List / add station workers |
+| DELETE | `/api/station/workers/<id>/` | Deactivate station worker |
+| POST | `/api/auth/change-password/` | Change own password |
+| GET | `/api/me/` | Current user info |
 
 ---
 
-## Build Phases
+## Telegram Mini App Screens
 
-### Phase 1 - Backend foundation
-- [ ] Django project scaffold
-- [ ] User model with roles
-- [ ] Task + Ticket + Comment models
-- [ ] Admin panel
+| Screen | Role |
+|---|---|
+| Ticket list | All roles |
+| Ticket detail | All roles |
+| Create ticket | Worker only |
+| Delegate task | IT Worker only |
+| Station workers | Station Manager only |
+| Add worker | Station Manager only |
+| Change password | All roles |
 
-### Phase 2 - API
-- [ ] DRF endpoints for Tasks, Tickets, Comments
-- [ ] JWT auth via Telegram initData
-- [ ] Permissions per role
+---
 
-### Phase 3 - Zammad bridge
-- [ ] Zammad API client
-- [ ] push_to_zammad service
-- [ ] sync_to_zammad management command
+## Dev / Testing
 
-### Phase 4 - Telegram Mini App
-- [ ] UI for Workers (report, view, comment)
-- [ ] UI for IT Workers (manage tickets)
+- Dev login: `http://localhost:8000/dev/` (DEBUG=True only)
+- Test users: `admin_user`, `manager1` (AZS-1), `it_worker1`, `it_worker2`, `worker1`, `worker2`
+- Start server: `cd backend && ~/.local/bin/pipenv run python manage.py runserver`
+- Retry Zammad push: `pipenv run python manage.py sync_to_zammad`
 
-### Phase 5 - Station Manager & Admin views
-- [ ] Station Manager dashboard
-- [ ] Admin panel customization
+---
+
+## What Is NOT Done Yet
+
+- Telegram Bot registration and Mini App URL setup
+- VPS deployment / production setup (Nginx, gunicorn, HTTPS, env vars)
+- Real Zammad credentials (`ZAMMAD_URL`, `ZAMMAD_TOKEN` in `.env`)
+- Deputy management UI in Mini App (currently admin-only via Django Admin)
+- Task photo on ticket creation (photos only in comments for now)
