@@ -60,3 +60,11 @@ class CommentPhoto(models.Model):
 
     def __str__(self):
         return f'Photo for Comment #{self.comment_id}'
+
+
+class TicketPhoto(models.Model):
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='photos')
+    image = models.ImageField(upload_to='tickets/')
+
+    def __str__(self):
+        return f'Photo for Ticket #{self.ticket_id}'

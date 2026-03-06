@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from users.models import User, Station
-from tasks.models import Ticket, Task, Comment, CommentPhoto
+from tasks.models import Ticket, Task, Comment, CommentPhoto, TicketPhoto
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -32,6 +32,12 @@ class CommentSerializer(serializers.ModelSerializer):
         read_only_fields = ('author', 'created_at')
 
 
+class TicketPhotoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TicketPhoto
+        fields = ('id', 'image')
+
+
 class TaskSerializer(serializers.ModelSerializer):
     assigned_to_name = serializers.CharField(source='assigned_to.get_full_name', read_only=True)
 
@@ -44,12 +50,13 @@ class TaskSerializer(serializers.ModelSerializer):
 class TicketSerializer(serializers.ModelSerializer):
     tasks = TaskSerializer(many=True, read_only=True)
     comments = serializers.SerializerMethodField()
+    photos = TicketPhotoSerializer(many=True, read_only=True)
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
 
     class Meta:
         model = Ticket
         fields = ('id', 'title', 'description', 'status', 'created_by', 'created_by_name',
-                  'tasks', 'comments', 'created_at', 'resolved_at')
+                  'photos', 'tasks', 'comments', 'created_at', 'resolved_at')
         read_only_fields = ('created_by', 'created_at', 'resolved_at')
 
     def get_comments(self, obj):

@@ -46,7 +46,10 @@ class TicketListCreateView(generics.ListCreateAPIView):
         return Ticket.objects.all()
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        from tasks.models import TicketPhoto
+        ticket = serializer.save(created_by=self.request.user)
+        for photo in self.request.FILES.getlist('photos'):
+            TicketPhoto.objects.create(ticket=ticket, image=photo)
 
 
 class TicketDetailView(generics.RetrieveAPIView):

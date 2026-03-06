@@ -43,7 +43,13 @@ export const api = {
   // Tickets (reported by worker)
   getTickets: () => request('GET', '/tickets/'),
   getTicket: (id) => request('GET', `/tickets/${id}/`),
-  createTicket: (data) => request('POST', '/tickets/', data),
+  createTicket: (title, description, photos) => {
+    const form = new FormData();
+    form.append('title', title);
+    form.append('description', description);
+    if (photos) photos.forEach(p => form.append('photos', p));
+    return request('POST', '/tickets/', form);
+  },
   resolveTicket: (id) => request('POST', `/tickets/${id}/resolve/`),
 
   // Tasks (assigned to IT workers within a ticket)

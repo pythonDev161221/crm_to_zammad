@@ -83,6 +83,11 @@ def push_to_zammad(ticket):
     if station:
         client.get_or_create_organization(station.name)
 
+    photo_count = ticket.photos.count()
+    body = ticket.description or ticket.title
+    if photo_count:
+        body += f'\n\n[{photo_count} photo(s) attached in original report]'
+
     zammad_ticket = client.post('/tickets', {
         'title': ticket.title,
         'group': group_name,
@@ -90,7 +95,7 @@ def push_to_zammad(ticket):
         'customer': ticket.created_by.username,
         'article': {
             'subject': ticket.title,
-            'body': ticket.description or ticket.title,
+            'body': body,
             'type': 'note',
             'internal': False,
         },

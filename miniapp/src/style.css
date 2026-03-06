@@ -218,6 +218,19 @@ textarea { resize: vertical; min-height: 80px; }
   font-size: 15px;
 }
 
+/* Photo upload button (create ticket form) */
+.photo-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--secondary-bg);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--link);
+}
+
 /* Internal comment */
 .comment-internal {
   border-left: 3px solid #856404;

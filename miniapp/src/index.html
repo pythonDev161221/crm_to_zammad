@@ -49,6 +49,15 @@
         <label>Details</label>
         <textarea id="new-ticket-desc" placeholder="Any additional information..."></textarea>
       </div>
+      <div class="field">
+        <label>Photos of the problem</label>
+        <label class="photo-upload-btn">
+          📷 Attach photos
+          <input type="file" id="new-ticket-photos" accept="image/*" multiple style="display:none"
+                 onchange="previewTicketPhotos(this)">
+        </label>
+        <div id="new-ticket-photo-preview" class="comment-photos" style="margin-top:8px"></div>
+      </div>
       <button class="btn btn-primary" onclick="submitCreateTicket()">Submit</button>
     </div>
   </div>

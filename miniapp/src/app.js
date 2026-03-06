@@ -128,10 +128,13 @@ function renderTicketDetail(ticket) {
       </div>
 
       <!-- Description -->
-      ${ticket.description ? `
+      ${ticket.description || ticket.photos?.length ? `
         <div class="detail-section">
-          <h3>Description</h3>
-          <div class="description-text">${escHtml(ticket.description)}</div>
+          ${ticket.description ? `<h3>Description</h3><div class="description-text">${escHtml(ticket.description)}</div>` : ''}
+          ${ticket.photos?.length ? `
+            <div class="comment-photos" style="margin-top:${ticket.description ? '10px' : '0'}">
+              ${ticket.photos.map(p => `<img class="comment-photo" src="${p.image}" onclick="openPhoto('${p.image}')">`).join('')}
+            </div>` : ''}
         </div>` : ''}
 
       <!-- Tasks (IT workers / admin see all) -->
@@ -349,11 +352,26 @@ window.showCreateTicket = function() {
   showScreen('screen-create-ticket');
   document.getElementById('new-ticket-title').value = '';
   document.getElementById('new-ticket-desc').value = '';
+  document.getElementById('new-ticket-photos').value = '';
+  document.getElementById('new-ticket-photo-preview').innerHTML = '';
+};
+
+window.previewTicketPhotos = function(input) {
+  const preview = document.getElementById('new-ticket-photo-preview');
+  preview.innerHTML = '';
+  [...input.files].forEach(file => {
+    const img = document.createElement('img');
+    img.className = 'comment-photo';
+    img.src = URL.createObjectURL(file);
+    preview.appendChild(img);
+  });
 };
 
 window.submitCreateTicket = async function() {
   const title = document.getElementById('new-ticket-title').value.trim();
   const description = document.getElementById('new-ticket-desc').value.trim();
+  const photoInput = document.getElementById('new-ticket-photos');
+  const photos = photoInput ? [...photoInput.files] : [];
 
   if (!title) {
     tgAlert('Please enter a title.');
@@ -361,7 +379,7 @@ window.submitCreateTicket = async function() {
   }
 
   try {
-    await api.createTicket({ title, description });
+    await api.createTicket(title, description, photos);
     await loadTickets();
     showScreen('screen-tickets');
   } catch (e) {
