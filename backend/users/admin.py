@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, Station
+from .models import User, Station, Company
 
 
 @admin.register(User)
@@ -17,7 +17,14 @@ class CustomUserAdmin(UserAdmin):
         return obj.get_full_name() or '-'
 
 
+@admin.register(Company)
+class CompanyAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+
+
 @admin.register(Station)
 class StationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'manager')
+    list_display = ('name', 'company', 'manager')
+    list_filter = ('company',)
     search_fields = ('name',)

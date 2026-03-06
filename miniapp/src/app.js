@@ -273,7 +273,7 @@ window.showDelegateForm = async function(taskId) {
   list.innerHTML = '<div class="empty">Loading...</div>';
 
   try {
-    const workers = await api.getITWorkers();
+    const workers = await api.getITWorkers(taskId);
     if (!workers.length) {
       list.innerHTML = '<div class="empty">No other IT workers available.</div>';
       return;

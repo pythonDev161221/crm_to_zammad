@@ -46,7 +46,7 @@ export const api = {
   addComment: (taskId, text) => request('POST', `/tasks/${taskId}/comments/`, { text }),
 
   // IT Workers
-  getITWorkers: () => request('GET', '/it-workers/'),
+  getITWorkers: (taskId) => request('GET', `/it-workers/${taskId ? `?task_id=${taskId}` : ''}`),
 
   // Station management
   getStationWorkers: () => request('GET', '/station/workers/'),

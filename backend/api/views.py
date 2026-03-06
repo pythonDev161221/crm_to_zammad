@@ -34,10 +34,11 @@ class TaskListCreateView(generics.ListCreateAPIView):
         if user.role == User.Role.WORKER:
             return Task.objects.filter(created_by=user)
         if user.role == User.Role.IT_WORKER:
-            # See open tasks (to pick up) + tasks they already have a ticket in
             from django.db.models import Q
+            user_companies = user.companies.all()
             return Task.objects.filter(
-                Q(status=Task.Status.OPEN) | Q(tickets__assigned_to=user)
+                Q(status=Task.Status.OPEN, created_by__station__company__in=user_companies) |
+                Q(tickets__assigned_to=user)
             ).distinct()
         # Admin and Station Manager see all
         return Task.objects.all()
@@ -56,8 +57,10 @@ class TaskDetailView(generics.RetrieveAPIView):
             return Task.objects.filter(created_by=user)
         if user.role == User.Role.IT_WORKER:
             from django.db.models import Q
+            user_companies = user.companies.all()
             return Task.objects.filter(
-                Q(status=Task.Status.OPEN) | Q(tickets__assigned_to=user)
+                Q(status=Task.Status.OPEN, created_by__station__company__in=user_companies) |
+                Q(tickets__assigned_to=user)
             ).distinct()
         return Task.objects.all()
 
@@ -92,6 +95,12 @@ class TicketCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         task = generics.get_object_or_404(Task, pk=self.kwargs['task_pk'])
+        assigned_to = serializer.validated_data.get('assigned_to')
+        # Verify the assigned IT worker belongs to the task's company
+        task_company = task.created_by.station.company if task.created_by.station else None
+        if task_company and not assigned_to.companies.filter(pk=task_company.pk).exists():
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('This IT worker is not assigned to this company.')
         serializer.save(task=task)
 
 
@@ -127,8 +136,22 @@ class ITWorkerListView(APIView):
     permission_classes = [IsAuthenticated, IsITWorker]
 
     def get(self, request):
-        workers = User.objects.filter(role=User.Role.IT_WORKER).exclude(pk=request.user.pk)
-        data = [{'id': u.id, 'name': u.get_full_name() or u.username} for u in workers]
+        task_id = request.query_params.get('task_id')
+        qs = User.objects.filter(role=User.Role.IT_WORKER).exclude(pk=request.user.pk)
+        if task_id:
+            try:
+                task = Task.objects.get(pk=task_id)
+                task_company = task.created_by.station.company if task.created_by.station else None
+                if task_company:
+                    qs = qs.filter(companies=task_company)
+                else:
+                    qs = qs.none()
+            except Task.DoesNotExist:
+                qs = qs.none()
+        else:
+            # Without task context, only show IT workers that have at least one company
+            qs = qs.filter(companies__isnull=False).distinct()
+        data = [{'id': u.id, 'name': u.get_full_name() or u.username} for u in qs]
         return Response(data)
 
 

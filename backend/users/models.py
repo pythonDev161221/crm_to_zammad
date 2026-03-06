@@ -14,13 +14,26 @@ class User(AbstractUser):
     station = models.ForeignKey(
         'Station', on_delete=models.SET_NULL, null=True, blank=True, related_name='users'
     )
+    companies = models.ManyToManyField(
+        'Company', blank=True, related_name='it_workers'
+    )
 
     def __str__(self):
         return f'{self.get_full_name() or self.username} ({self.role})'
 
 
+class Company(models.Model):
+    name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name
+
+
 class Station(models.Model):
     name = models.CharField(max_length=255)
+    company = models.ForeignKey(
+        Company, on_delete=models.SET_NULL, null=True, blank=True, related_name='stations'
+    )
     manager = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_stations'
     )
