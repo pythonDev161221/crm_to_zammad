@@ -71,10 +71,10 @@ class ZammadClient:
         self.put(f'/users/{agent_id}', {'group_ids': group_ids_payload})
 
 
-def push_to_zammad(task):
+def push_to_zammad(ticket):
     client = ZammadClient()
 
-    station = task.created_by.station
+    station = ticket.created_by.station
     company = station.company if station else None
 
     group_name = company.name if company else 'Users'
@@ -84,13 +84,13 @@ def push_to_zammad(task):
         client.get_or_create_organization(station.name)
 
     zammad_ticket = client.post('/tickets', {
-        'title': task.title,
+        'title': ticket.title,
         'group': group_name,
         'organization': station.name if station else None,
-        'customer': task.created_by.username,
+        'customer': ticket.created_by.username,
         'article': {
-            'subject': task.title,
-            'body': task.description or task.title,
+            'subject': ticket.title,
+            'body': ticket.description or ticket.title,
             'type': 'note',
             'internal': False,
         },
@@ -98,27 +98,27 @@ def push_to_zammad(task):
 
     zammad_ticket_id = zammad_ticket['id']
 
-    for ticket in task.tickets.select_related('assigned_to').all():
+    for task in ticket.tasks.select_related('assigned_to').all():
         duration = None
-        if ticket.started_at and ticket.finished_at:
-            duration = str(ticket.finished_at - ticket.started_at)
+        if task.started_at and task.finished_at:
+            duration = str(task.finished_at - task.started_at)
 
-        body = f'IT Worker: {ticket.assigned_to.get_full_name() or ticket.assigned_to.username}\n'
-        body += f'Status: {ticket.status}\n'
+        body = f'IT Worker: {task.assigned_to.get_full_name() or task.assigned_to.username}\n'
+        body += f'Status: {task.status}\n'
         if duration:
             body += f'Duration: {duration}\n'
-        if ticket.notes:
-            body += f'\nNotes:\n{ticket.notes}'
+        if task.notes:
+            body += f'\nNotes:\n{task.notes}'
 
         client.post('/ticket_articles', {
             'ticket_id': zammad_ticket_id,
-            'subject': f'Ticket by {ticket.assigned_to.username}',
+            'subject': f'Task by {task.assigned_to.username}',
             'body': body,
             'type': 'note',
             'internal': True,
         })
 
-    for comment in task.comments.select_related('author').all():
+    for comment in ticket.comments.select_related('author').all():
         author_name = comment.author.get_full_name() or comment.author.username
         client.post('/ticket_articles', {
             'ticket_id': zammad_ticket_id,
@@ -128,5 +128,5 @@ def push_to_zammad(task):
             'internal': comment.is_internal,
         })
 
-    task.zammad_synced = True
-    task.save(update_fields=['zammad_synced'])
+    ticket.zammad_synced = True
+    ticket.save(update_fields=['zammad_synced'])

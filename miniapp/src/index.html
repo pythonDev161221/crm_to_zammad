@@ -15,52 +15,52 @@
     <div class="loading">Connecting...</div>
   </div>
 
-  <!-- Task List -->
-  <div id="screen-tasks" class="screen">
+  <!-- Ticket List -->
+  <div id="screen-tickets" class="screen">
     <div class="header">
-      <h1>My Tasks</h1>
+      <h1>My Tickets</h1>
       <button id="btn-station" class="back-btn" onclick="showStationWorkers()" style="display:none">AZS &#9881;</button>
       <button class="back-btn" onclick="showScreen('screen-change-password')" title="Change password">&#128273;</button>
     </div>
-    <div id="tasks-list" class="card-list"></div>
-    <button id="fab-new-task" class="fab" onclick="showCreateTask()" style="display:none">+</button>
+    <div id="tickets-list" class="card-list"></div>
+    <button id="fab-new-ticket" class="fab" onclick="showCreateTicket()" style="display:none">+</button>
   </div>
 
-  <!-- Task Detail -->
-  <div id="screen-task-detail" class="screen">
+  <!-- Ticket Detail -->
+  <div id="screen-ticket-detail" class="screen">
     <div class="header">
-      <h1 id="task-detail-title">Task</h1>
+      <h1 id="ticket-detail-title">Ticket</h1>
     </div>
-    <div id="task-detail-body"></div>
+    <div id="ticket-detail-body"></div>
   </div>
 
-  <!-- Create Task -->
-  <div id="screen-create-task" class="screen">
+  <!-- Create Ticket -->
+  <div id="screen-create-ticket" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-tasks')">&#8592; Back</button>
+      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
       <h1>New Request</h1>
     </div>
     <div class="form">
       <div class="field">
         <label>Title *</label>
-        <input id="new-task-title" type="text" placeholder="Briefly describe the problem">
+        <input id="new-ticket-title" type="text" placeholder="Briefly describe the problem">
       </div>
       <div class="field">
         <label>Details</label>
-        <textarea id="new-task-desc" placeholder="Any additional information..."></textarea>
+        <textarea id="new-ticket-desc" placeholder="Any additional information..."></textarea>
       </div>
-      <button class="btn btn-primary" onclick="submitCreateTask()">Submit</button>
+      <button class="btn btn-primary" onclick="submitCreateTicket()">Submit</button>
     </div>
   </div>
 
-  <!-- Delegate Ticket -->
+  <!-- Delegate Task -->
   <div id="screen-delegate" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-task-detail')">&#8592; Back</button>
+      <button class="back-btn" onclick="showScreen('screen-ticket-detail')">&#8592; Back</button>
       <h1>Delegate</h1>
     </div>
     <div class="form">
-      <input type="hidden" id="delegate-task-id">
+      <input type="hidden" id="delegate-ticket-id">
       <div class="field">
         <label>Select IT Worker</label>
         <div id="delegate-worker-list" class="card-list" style="padding:0"></div>
@@ -76,7 +76,7 @@
   <!-- Station Workers (manager/deputy) -->
   <div id="screen-station-workers" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-tasks')">&#8592; Back</button>
+      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
       <h1 id="station-name">My Station</h1>
     </div>
     <div id="station-workers-list" class="card-list"></div>
@@ -113,7 +113,7 @@
   <!-- Change Password -->
   <div id="screen-change-password" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-tasks')">&#8592; Back</button>
+      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
       <h1>Change Password</h1>
     </div>
     <div class="form">

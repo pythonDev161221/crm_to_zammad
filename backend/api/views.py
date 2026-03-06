@@ -4,13 +4,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from tasks.models import Task, Ticket, Comment
+from tasks.models import Ticket, Task, Comment
 from users.models import User
 from zammad_bridge.client import push_to_zammad
 from .permissions import IsITWorker, IsStationManager, IsWorker
 from .serializers import (
-    TaskSerializer, TaskCreateSerializer,
-    TicketSerializer, CommentSerializer, UserSerializer,
+    TicketSerializer, TicketCreateSerializer,
+    TaskSerializer, CommentSerializer, UserSerializer,
 )
 
 
@@ -21,103 +21,101 @@ class MeView(APIView):
         return Response(UserSerializer(request.user).data)
 
 
-class TaskListCreateView(generics.ListCreateAPIView):
+class TicketListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
-            return TaskCreateSerializer
-        return TaskSerializer
+            return TicketCreateSerializer
+        return TicketSerializer
 
     def get_queryset(self):
         user = self.request.user
         if user.role == User.Role.WORKER:
-            return Task.objects.filter(created_by=user)
+            return Ticket.objects.filter(created_by=user)
         if user.role == User.Role.IT_WORKER:
             from django.db.models import Q
             user_companies = user.companies.all()
-            return Task.objects.filter(
-                Q(status=Task.Status.OPEN, created_by__station__company__in=user_companies) |
-                Q(tickets__assigned_to=user)
+            return Ticket.objects.filter(
+                Q(status=Ticket.Status.OPEN, created_by__station__company__in=user_companies) |
+                Q(tasks__assigned_to=user)
             ).distinct()
-        # Admin and Station Manager see all
-        return Task.objects.all()
+        return Ticket.objects.all()
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
 
-class TaskDetailView(generics.RetrieveAPIView):
+class TicketDetailView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = TaskSerializer
+    serializer_class = TicketSerializer
 
     def get_queryset(self):
         user = self.request.user
         if user.role == User.Role.WORKER:
-            return Task.objects.filter(created_by=user)
+            return Ticket.objects.filter(created_by=user)
         if user.role == User.Role.IT_WORKER:
             from django.db.models import Q
             user_companies = user.companies.all()
-            return Task.objects.filter(
-                Q(status=Task.Status.OPEN, created_by__station__company__in=user_companies) |
-                Q(tickets__assigned_to=user)
+            return Ticket.objects.filter(
+                Q(status=Ticket.Status.OPEN, created_by__station__company__in=user_companies) |
+                Q(tasks__assigned_to=user)
             ).distinct()
-        return Task.objects.all()
+        return Ticket.objects.all()
 
 
-class TaskResolveView(APIView):
+class TicketResolveView(APIView):
     permission_classes = [IsAuthenticated, IsITWorker]
 
     def post(self, request, pk):
         try:
-            task = Task.objects.filter(tickets__assigned_to=request.user).distinct().get(pk=pk)
-        except Task.DoesNotExist:
+            ticket = Ticket.objects.filter(tasks__assigned_to=request.user).distinct().get(pk=pk)
+        except Ticket.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        if task.status == Task.Status.RESOLVED:
-            return Response({'detail': 'Task already resolved.'}, status=status.HTTP_400_BAD_REQUEST)
+        if ticket.status == Ticket.Status.RESOLVED:
+            return Response({'detail': 'Ticket already resolved.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        task.status = Task.Status.RESOLVED
-        task.resolved_at = timezone.now()
-        task.save()
+        ticket.status = Ticket.Status.RESOLVED
+        ticket.resolved_at = timezone.now()
+        ticket.save()
 
         try:
-            push_to_zammad(task)
+            push_to_zammad(ticket)
         except Exception:
             pass  # zammad_synced stays False, retry via management command
 
-        return Response(TaskSerializer(task).data)
+        return Response(TicketSerializer(ticket).data)
 
 
-class TicketCreateView(generics.CreateAPIView):
+class TaskCreateView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated, IsITWorker]
-    serializer_class = TicketSerializer
+    serializer_class = TaskSerializer
 
     def perform_create(self, serializer):
-        task = generics.get_object_or_404(Task, pk=self.kwargs['task_pk'])
+        ticket = generics.get_object_or_404(Ticket, pk=self.kwargs['ticket_pk'])
         assigned_to = serializer.validated_data.get('assigned_to')
-        # Verify the assigned IT worker belongs to the task's company
-        task_company = task.created_by.station.company if task.created_by.station else None
-        if task_company and not assigned_to.companies.filter(pk=task_company.pk).exists():
+        ticket_company = ticket.created_by.station.company if ticket.created_by.station else None
+        if ticket_company and not assigned_to.companies.filter(pk=ticket_company.pk).exists():
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('This IT worker is not assigned to this company.')
-        serializer.save(task=task)
+        serializer.save(ticket=ticket)
 
 
-class TicketUpdateView(generics.UpdateAPIView):
+class TaskUpdateView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated, IsITWorker]
-    serializer_class = TicketSerializer
+    serializer_class = TaskSerializer
 
     def get_queryset(self):
-        return Ticket.objects.filter(assigned_to=self.request.user)
+        return Task.objects.filter(assigned_to=self.request.user)
 
     def perform_update(self, serializer):
-        ticket = self.get_object()
-        new_status = serializer.validated_data.get('status', ticket.status)
+        task = self.get_object()
+        new_status = serializer.validated_data.get('status', task.status)
 
-        if new_status == Ticket.Status.IN_PROGRESS and not ticket.started_at:
+        if new_status == Task.Status.IN_PROGRESS and not task.started_at:
             serializer.save(started_at=timezone.now())
-        elif new_status == Ticket.Status.DONE and not ticket.finished_at:
+        elif new_status == Task.Status.DONE and not task.finished_at:
             serializer.save(finished_at=timezone.now())
         else:
             serializer.save()
@@ -129,7 +127,7 @@ class CommentCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         from tasks.models import CommentPhoto
-        task = generics.get_object_or_404(Task, pk=self.kwargs['task_pk'])
+        ticket = generics.get_object_or_404(Ticket, pk=self.kwargs['ticket_pk'])
         user = self.request.user
         is_internal = serializer.validated_data.get('is_internal', False)
 
@@ -137,7 +135,7 @@ class CommentCreateView(generics.CreateAPIView):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('Workers cannot create internal comments.')
 
-        comment = serializer.save(task=task, author=user)
+        comment = serializer.save(ticket=ticket, author=user)
 
         for photo in self.request.FILES.getlist('photos'):
             CommentPhoto.objects.create(comment=comment, image=photo)
@@ -147,20 +145,19 @@ class ITWorkerListView(APIView):
     permission_classes = [IsAuthenticated, IsITWorker]
 
     def get(self, request):
-        task_id = request.query_params.get('task_id')
+        ticket_id = request.query_params.get('ticket_id')  # filter by ticket's company
         qs = User.objects.filter(role=User.Role.IT_WORKER).exclude(pk=request.user.pk)
-        if task_id:
+        if ticket_id:
             try:
-                task = Task.objects.get(pk=task_id)
-                task_company = task.created_by.station.company if task.created_by.station else None
-                if task_company:
-                    qs = qs.filter(companies=task_company)
+                ticket = Ticket.objects.get(pk=ticket_id)
+                ticket_company = ticket.created_by.station.company if ticket.created_by.station else None
+                if ticket_company:
+                    qs = qs.filter(companies=ticket_company)
                 else:
                     qs = qs.none()
-            except Task.DoesNotExist:
+            except Ticket.DoesNotExist:
                 qs = qs.none()
         else:
-            # Without task context, only show IT workers that have at least one company
             qs = qs.filter(companies__isnull=False).distinct()
         data = [{'id': u.id, 'name': u.get_full_name() or u.username} for u in qs]
         return Response(data)
@@ -187,7 +184,6 @@ class StationWorkersView(APIView):
         stations = self._get_stations(request.user)
         if not stations:
             return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
-        # Use station_id from request if manager manages multiple, default to first
         station_id = request.data.get('station_id')
         if station_id:
             station = next((s for s in stations if s.id == int(station_id)), None)

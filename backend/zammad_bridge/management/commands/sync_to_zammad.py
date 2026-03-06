@@ -1,28 +1,28 @@
 from django.core.management.base import BaseCommand
-from tasks.models import Task
+from tasks.models import Ticket
 from zammad_bridge.client import push_to_zammad
 
 
 class Command(BaseCommand):
-    help = 'Retry pushing unsynced resolved tasks to Zammad'
+    help = 'Retry pushing unsynced resolved tickets to Zammad'
 
     def handle(self, *args, **options):
-        tasks = Task.objects.filter(status=Task.Status.RESOLVED, zammad_synced=False)
-        total = tasks.count()
+        tickets = Ticket.objects.filter(status=Ticket.Status.RESOLVED, zammad_synced=False)
+        total = tickets.count()
 
         if total == 0:
-            self.stdout.write('No unsynced tasks found.')
+            self.stdout.write('No unsynced tickets found.')
             return
 
-        self.stdout.write(f'Found {total} unsynced task(s). Syncing...')
+        self.stdout.write(f'Found {total} unsynced ticket(s). Syncing...')
 
         success = 0
-        for task in tasks:
+        for ticket in tickets:
             try:
-                push_to_zammad(task)
+                push_to_zammad(ticket)
                 success += 1
-                self.stdout.write(f'  OK: Task #{task.pk} - {task.title}')
+                self.stdout.write(f'  OK: Ticket #{ticket.pk} - {ticket.title}')
             except Exception as e:
-                self.stderr.write(f'  FAIL: Task #{task.pk} - {e}')
+                self.stderr.write(f'  FAIL: Ticket #{ticket.pk} - {e}')
 
         self.stdout.write(f'Done. {success}/{total} synced.')

@@ -1,7 +1,7 @@
 import { api, setToken } from '/static/api.js';
 
 const tg = window.Telegram?.WebApp;
-const inTelegram = !!(tg?.initData);  // true only inside real Telegram
+const inTelegram = !!(tg?.initData);
 const app = document.getElementById('app');
 
 function tgAlert(msg) { inTelegram ? tg.showAlert(msg) : alert(msg); }
@@ -19,144 +19,141 @@ window.showScreen = function(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const screen = document.getElementById(id);
   if (screen) screen.classList.add('active');
-  if (inTelegram) tg.BackButton[id === 'screen-tasks' ? 'hide' : 'show']();
+  if (inTelegram) tg.BackButton[id === 'screen-tickets' ? 'hide' : 'show']();
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 async function init() {
-  if (inTelegram) { tg.ready(); tg.expand(); tg.BackButton.onClick(() => showScreen('screen-tasks')); }
+  if (inTelegram) { tg.ready(); tg.expand(); tg.BackButton.onClick(() => showScreen('screen-tickets')); }
 
   showScreen('screen-loading');
 
   try {
-    // Dev mode: use token from dev login page
     const devToken = localStorage.getItem('dev_access_token');
     if (devToken) {
       setToken(devToken);
       const me = await api.getMe();
       currentUser = { id: me.id, role: me.role, name: me.first_name || me.username };
-      await loadTasks();
+      await loadTickets();
       return;
     }
 
-    // Production: Telegram initData
     const initData = tg?.initData || '';
     if (!initData) {
-      // No Telegram and no dev token → redirect to dev login
       window.location.href = '/dev/';
       return;
     }
     const auth = await api.telegramAuth(initData);
     setToken(auth.access);
     currentUser = auth.user;
-    await loadTasks();
+    await loadTickets();
   } catch (e) {
     showError('Auth failed: ' + e.message);
   }
 }
 
-// ── Tasks List ────────────────────────────────────────────────────────────────
+// ── Ticket List ───────────────────────────────────────────────────────────────
 
-async function loadTasks() {
-  showScreen('screen-tasks');
-  const list = document.getElementById('tasks-list');
+async function loadTickets() {
+  showScreen('screen-tickets');
+  const list = document.getElementById('tickets-list');
   list.innerHTML = '<div class="loading">Loading...</div>';
 
   try {
-    const tasks = await api.getTasks();
-    renderTaskList(tasks);
+    const tickets = await api.getTickets();
+    renderTicketList(tickets);
   } catch (e) {
     list.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
   }
 }
 
-function renderTaskList(tasks) {
-  const list = document.getElementById('tasks-list');
+function renderTicketList(tickets) {
+  const list = document.getElementById('tickets-list');
   const role = currentUser.role;
 
-  const fab = document.getElementById('fab-new-task');
+  const fab = document.getElementById('fab-new-ticket');
   fab.style.display = role === 'worker' ? 'flex' : 'none';
 
   const btnStation = document.getElementById('btn-station');
   btnStation.style.display = role === 'station_manager' ? 'inline' : 'none';
 
-  if (!tasks.length) {
-    list.innerHTML = '<div class="empty">No tasks yet.</div>';
+  if (!tickets.length) {
+    list.innerHTML = '<div class="empty">No tickets yet.</div>';
     return;
   }
 
-  list.innerHTML = tasks.map(t => `
-    <div class="card" onclick="openTask(${t.id})">
+  list.innerHTML = tickets.map(t => `
+    <div class="card" onclick="openTicket(${t.id})">
       <div class="card-title">${escHtml(t.title)}</div>
       <div class="card-meta">
         <span class="badge badge-${t.status}">${formatStatus(t.status)}</span>
         &nbsp;${formatDate(t.created_at)}
       </div>
-      ${role !== 'worker' ? `<div class="card-meta" style="margin-top:4px">${t.tickets?.length || 0} ticket(s)</div>` : ''}
+      ${role !== 'worker' ? `<div class="card-meta" style="margin-top:4px">${t.tasks?.length || 0} task(s)</div>` : ''}
     </div>
   `).join('');
 }
 
-// ── Task Detail ───────────────────────────────────────────────────────────────
+// ── Ticket Detail ─────────────────────────────────────────────────────────────
 
-window.openTask = async function(id) {
-  showScreen('screen-task-detail');
-  const body = document.getElementById('task-detail-body');
+window.openTicket = async function(id) {
+  showScreen('screen-ticket-detail');
+  const body = document.getElementById('ticket-detail-body');
   body.innerHTML = '<div class="loading">Loading...</div>';
 
   try {
-    const task = await api.getTask(id);
-    renderTaskDetail(task);
+    const ticket = await api.getTicket(id);
+    renderTicketDetail(ticket);
   } catch (e) {
     body.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
   }
 };
 
-function renderTaskDetail(task) {
-  const header = document.getElementById('task-detail-title');
-  header.textContent = task.title;
+function renderTicketDetail(ticket) {
+  const header = document.getElementById('ticket-detail-title');
+  header.textContent = ticket.title;
 
-  const body = document.getElementById('task-detail-body');
+  const body = document.getElementById('ticket-detail-body');
   const role = currentUser.role;
   const isITWorker = role === 'it_worker' || role === 'admin';
-  const myTicket = task.tickets?.find(t => t.assigned_to === currentUser.id);
+  const myTask = ticket.tasks?.find(t => t.assigned_to === currentUser.id);
 
   body.innerHTML = `
     <div class="detail-body">
       <!-- Status -->
       <div class="detail-section">
-        <span class="badge badge-${task.status}">${formatStatus(task.status)}</span>
-        <span style="color:var(--hint);font-size:13px;margin-left:8px">by ${escHtml(task.created_by_name)}</span>
+        <span class="badge badge-${ticket.status}">${formatStatus(ticket.status)}</span>
+        <span style="color:var(--hint);font-size:13px;margin-left:8px">by ${escHtml(ticket.created_by_name)}</span>
       </div>
 
       <!-- Description -->
-      ${task.description ? `
+      ${ticket.description ? `
         <div class="detail-section">
           <h3>Description</h3>
-          <div class="description-text">${escHtml(task.description)}</div>
+          <div class="description-text">${escHtml(ticket.description)}</div>
         </div>` : ''}
 
-      <!-- Tickets (IT workers / admin see all) -->
+      <!-- Tasks (IT workers / admin see all) -->
       ${isITWorker ? `
         <div class="detail-section">
-          <h3>Tickets</h3>
-          ${task.tickets?.length ? task.tickets.map(t => `
+          <h3>Tasks</h3>
+          ${ticket.tasks?.length ? ticket.tasks.map(t => `
             <div class="ticket-card">
               <div style="display:flex;justify-content:space-between;align-items:center">
                 <div class="ticket-worker">${escHtml(t.assigned_to_name)}</div>
                 <span class="badge badge-${t.status}">${formatStatus(t.status)}</span>
               </div>
               ${t.notes ? `<div class="ticket-notes">${escHtml(t.notes)}</div>` : ''}
-              ${t.assigned_to === currentUser.id ? renderTicketActions(t) : ''}
+              ${t.assigned_to === currentUser.id ? renderTaskActions(t) : ''}
             </div>
-          `).join('') : '<div class="empty" style="padding:10px">No tickets yet.</div>'}
+          `).join('') : '<div class="empty" style="padding:10px">No tasks yet.</div>'}
         </div>` : ''}
 
       <!-- Comments -->
       <div class="detail-section" id="comments-section">
         <h3>Comments</h3>
-        ${renderComments(task.comments)}
+        ${renderComments(ticket.comments)}
       </div>
     </div>
 
@@ -172,36 +169,35 @@ function renderTaskDetail(task) {
           &#128247;
           <input type="file" id="comment-photos" accept="image/*" multiple style="display:none">
         </label>
-        <button onclick="submitComment(${task.id})">&#10148;</button>
+        <button onclick="submitComment(${ticket.id})">&#10148;</button>
       </div>
       <div id="comment-photo-preview" class="comment-photo-preview"></div>
     </div>
 
     <!-- IT Worker actions -->
-    ${isITWorker && task.status !== 'resolved' ? `
+    ${isITWorker && ticket.status !== 'resolved' ? `
       <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px">
-        ${!task.tickets?.find(t => t.assigned_to === currentUser.id) ? `
-          <button class="btn btn-primary" onclick="assignSelf(${task.id})">Take this task</button>
+        ${!ticket.tasks?.find(t => t.assigned_to === currentUser.id) ? `
+          <button class="btn btn-primary" onclick="assignSelf(${ticket.id})">Take this ticket</button>
         ` : ''}
-        ${myTicket && myTicket.status !== 'done' ? `
-          <button class="btn btn-secondary" onclick="showDelegateForm(${task.id})">Delegate to another IT worker</button>
+        ${myTask && myTask.status !== 'done' ? `
+          <button class="btn btn-secondary" onclick="showDelegateForm(${ticket.id})">Delegate to another IT worker</button>
         ` : ''}
-        ${canResolve(task) ? `
-          <button class="btn btn-danger" onclick="resolveTask(${task.id})">Mark as Resolved</button>
+        ${canResolve(ticket) ? `
+          <button class="btn btn-danger" onclick="resolveTicket(${ticket.id})">Mark as Resolved</button>
         ` : ''}
       </div>
     ` : ''}
   `;
 
-  // store task id on screen for refresh
-  document.getElementById('screen-task-detail').dataset.taskId = task.id;
+  document.getElementById('screen-ticket-detail').dataset.ticketId = ticket.id;
 }
 
-function renderTicketActions(ticket) {
-  if (ticket.status === 'done') return '';
-  const next = ticket.status === 'open' ? 'in_progress' : 'done';
+function renderTaskActions(task) {
+  if (task.status === 'done') return '';
+  const next = task.status === 'open' ? 'in_progress' : 'done';
   const label = next === 'in_progress' ? 'Start working' : 'Mark my part done';
-  return `<button class="btn btn-primary" style="margin-top:8px" onclick="updateTicket(${ticket.id}, '${next}')">
+  return `<button class="btn btn-primary" style="margin-top:8px" onclick="updateTask(${task.id}, '${next}')">
     ${label}
   </button>`;
 }
@@ -224,49 +220,49 @@ function renderComments(comments) {
   `).join('');
 }
 
-function canResolve(task) {
-  if (!task.tickets?.length) return false;
-  return task.tickets.every(t => t.status === 'done');
+function canResolve(ticket) {
+  if (!ticket.tasks?.length) return false;
+  return ticket.tasks.every(t => t.status === 'done');
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 
-window.updateTicket = async function(ticketId, newStatus) {
+window.updateTask = async function(taskId, newStatus) {
   try {
-    await api.updateTicket(ticketId, { status: newStatus });
-    const taskId = document.getElementById('screen-task-detail').dataset.taskId;
-    await openTask(taskId);
+    await api.updateTask(taskId, { status: newStatus });
+    const ticketId = document.getElementById('screen-ticket-detail').dataset.ticketId;
+    await openTicket(ticketId);
   } catch (e) {
     tgAlert(e.message);
   }
 };
 
-window.assignSelf = async function(taskId) {
+window.assignSelf = async function(ticketId) {
   try {
-    await api.createTicket(taskId, {
+    await api.createTask(ticketId, {
       assigned_to: currentUser.id,
       status: 'open',
     });
-    await openTask(taskId);
+    await openTicket(ticketId);
   } catch (e) {
     tgAlert(e.message);
   }
 };
 
-window.resolveTask = async function(taskId) {
-  const confirmed = await tgConfirm('Mark this task as resolved and send to Zammad?');
+window.resolveTicket = async function(ticketId) {
+  const confirmed = await tgConfirm('Mark this ticket as resolved and send to Zammad?');
   if (!confirmed) return;
   try {
-    await api.resolveTask(taskId);
-    tgAlert('Task resolved and archived to Zammad.');
-    await loadTasks();
-    showScreen('screen-tasks');
+    await api.resolveTicket(ticketId);
+    tgAlert('Ticket resolved and archived to Zammad.');
+    await loadTickets();
+    showScreen('screen-tickets');
   } catch (e) {
     tgAlert(e.message);
   }
 };
 
-window.submitComment = async function(taskId) {
+window.submitComment = async function(ticketId) {
   const input = document.getElementById('comment-input');
   const text = input.value.trim();
   const photoInput = document.getElementById('comment-photos');
@@ -276,14 +272,14 @@ window.submitComment = async function(taskId) {
   if (!text && !photos.length) return;
 
   try {
-    await api.addComment(taskId, text, isInternal, photos);
+    await api.addComment(ticketId, text, isInternal, photos);
     input.value = '';
     if (photoInput) photoInput.value = '';
     document.getElementById('comment-photo-preview').innerHTML = '';
     if (document.getElementById('comment-internal')) {
       document.getElementById('comment-internal').checked = false;
     }
-    await openTask(taskId);
+    await openTicket(ticketId);
   } catch (e) {
     tgAlert(e.message);
   }
@@ -291,9 +287,9 @@ window.submitComment = async function(taskId) {
 
 let selectedDelegateWorkerId = null;
 
-window.showDelegateForm = async function(taskId) {
+window.showDelegateForm = async function(ticketId) {
   showScreen('screen-delegate');
-  document.getElementById('delegate-task-id').value = taskId;
+  document.getElementById('delegate-ticket-id').value = ticketId;
   document.getElementById('delegate-notes').value = '';
   selectedDelegateWorkerId = null;
 
@@ -301,7 +297,7 @@ window.showDelegateForm = async function(taskId) {
   list.innerHTML = '<div class="empty">Loading...</div>';
 
   try {
-    const workers = await api.getITWorkers(taskId);
+    const workers = await api.getITWorkers(ticketId);
     if (!workers.length) {
       list.innerHTML = '<div class="empty">No other IT workers available.</div>';
       return;
@@ -326,7 +322,7 @@ window.selectWorker = function(id, name) {
 };
 
 window.submitDelegate = async function() {
-  const taskId = document.getElementById('delegate-task-id').value;
+  const ticketId = document.getElementById('delegate-ticket-id').value;
   const notes = document.getElementById('delegate-notes').value.trim();
 
   if (!selectedDelegateWorkerId) {
@@ -335,29 +331,29 @@ window.submitDelegate = async function() {
   }
 
   try {
-    await api.createTicket(taskId, {
+    await api.createTask(ticketId, {
       assigned_to: selectedDelegateWorkerId,
       status: 'open',
       notes,
     });
-    await openTask(taskId);
-    showScreen('screen-task-detail');
+    await openTicket(ticketId);
+    showScreen('screen-ticket-detail');
   } catch (e) {
     tgAlert(e.message);
   }
 };
 
-// ── Create Task ───────────────────────────────────────────────────────────────
+// ── Create Ticket ─────────────────────────────────────────────────────────────
 
-window.showCreateTask = function() {
-  showScreen('screen-create-task');
-  document.getElementById('new-task-title').value = '';
-  document.getElementById('new-task-desc').value = '';
+window.showCreateTicket = function() {
+  showScreen('screen-create-ticket');
+  document.getElementById('new-ticket-title').value = '';
+  document.getElementById('new-ticket-desc').value = '';
 };
 
-window.submitCreateTask = async function() {
-  const title = document.getElementById('new-task-title').value.trim();
-  const description = document.getElementById('new-task-desc').value.trim();
+window.submitCreateTicket = async function() {
+  const title = document.getElementById('new-ticket-title').value.trim();
+  const description = document.getElementById('new-ticket-desc').value.trim();
 
   if (!title) {
     tgAlert('Please enter a title.');
@@ -365,9 +361,9 @@ window.submitCreateTask = async function() {
   }
 
   try {
-    await api.createTask({ title, description });
-    await loadTasks();
-    showScreen('screen-tasks');
+    await api.createTicket({ title, description });
+    await loadTickets();
+    showScreen('screen-tickets');
   } catch (e) {
     tgAlert(e.message);
   }
@@ -472,7 +468,7 @@ window.submitChangePassword = async function() {
     document.getElementById('old-password').value = '';
     document.getElementById('new-password').value = '';
     document.getElementById('confirm-password').value = '';
-    showScreen('screen-tasks');
+    showScreen('screen-tickets');
   } catch (e) {
     tgAlert(e.message);
   }

@@ -4,17 +4,17 @@ from . import views
 urlpatterns = [
     path('me/', views.MeView.as_view(), name='me'),
 
-    # Tasks
-    path('tasks/', views.TaskListCreateView.as_view(), name='task-list'),
-    path('tasks/<int:pk>/', views.TaskDetailView.as_view(), name='task-detail'),
-    path('tasks/<int:pk>/resolve/', views.TaskResolveView.as_view(), name='task-resolve'),
+    # Tickets (main entity, created by worker)
+    path('tickets/', views.TicketListCreateView.as_view(), name='ticket-list'),
+    path('tickets/<int:pk>/', views.TicketDetailView.as_view(), name='ticket-detail'),
+    path('tickets/<int:pk>/resolve/', views.TicketResolveView.as_view(), name='ticket-resolve'),
 
-    # Tickets (under a task)
-    path('tasks/<int:task_pk>/tickets/', views.TicketCreateView.as_view(), name='ticket-create'),
-    path('tickets/<int:pk>/', views.TicketUpdateView.as_view(), name='ticket-update'),
+    # Tasks (assigned to IT workers within a ticket)
+    path('tickets/<int:ticket_pk>/tasks/', views.TaskCreateView.as_view(), name='task-create'),
+    path('tasks/<int:pk>/', views.TaskUpdateView.as_view(), name='task-update'),
 
     # Comments
-    path('tasks/<int:task_pk>/comments/', views.CommentCreateView.as_view(), name='comment-create'),
+    path('tickets/<int:ticket_pk>/comments/', views.CommentCreateView.as_view(), name='comment-create'),
 
     # IT Workers list (for delegation)
     path('it-workers/', views.ITWorkerListView.as_view(), name='it-workers'),
