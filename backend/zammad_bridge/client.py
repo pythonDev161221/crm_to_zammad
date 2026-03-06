@@ -10,20 +10,84 @@ class ZammadClient:
             'Content-Type': 'application/json',
         }
 
-    def post(self, endpoint, data):
-        url = f'{self.base_url}/api/v1{endpoint}'
-        response = requests.post(url, json=data, headers=self.headers, timeout=10)
+    def _url(self, endpoint):
+        return f'{self.base_url}/api/v1{endpoint}'
+
+    def get(self, endpoint, params=None):
+        response = requests.get(self._url(endpoint), params=params, headers=self.headers, timeout=10)
         response.raise_for_status()
         return response.json()
+
+    def post(self, endpoint, data):
+        response = requests.post(self._url(endpoint), json=data, headers=self.headers, timeout=10)
+        response.raise_for_status()
+        return response.json()
+
+    def put(self, endpoint, data):
+        response = requests.put(self._url(endpoint), json=data, headers=self.headers, timeout=10)
+        response.raise_for_status()
+        return response.json()
+
+    # ── Groups ────────────────────────────────────────────────────────────────
+
+    def get_or_create_group(self, name):
+        groups = self.get('/groups')
+        for g in groups:
+            if g['name'] == name:
+                return g['id']
+        result = self.post('/groups', {'name': name, 'active': True})
+        return result['id']
+
+    # ── Organizations ─────────────────────────────────────────────────────────
+
+    def get_or_create_organization(self, name):
+        results = self.get('/organizations/search', params={'query': name, 'limit': 10})
+        for o in results:
+            if o['name'] == name:
+                return o['id']
+        result = self.post('/organizations', {'name': name, 'active': True})
+        return result['id']
+
+    # ── Agents ────────────────────────────────────────────────────────────────
+
+    def get_or_create_agent(self, user):
+        results = self.get('/users/search', params={'query': user.username, 'limit': 10})
+        for u in results:
+            if u.get('login') == user.username:
+                return u['id']
+        result = self.post('/users', {
+            'firstname': user.first_name or user.username,
+            'lastname': user.last_name or '',
+            'login': user.username,
+            'email': user.email or f'{user.username}@internal.local',
+            'roles': ['Agent'],
+            'active': True,
+        })
+        return result['id']
+
+    def set_agent_groups(self, agent_id, group_ids):
+        """Replace agent's group membership with the given list of group IDs."""
+        group_ids_payload = {str(gid): ['full'] for gid in group_ids}
+        self.put(f'/users/{agent_id}', {'group_ids': group_ids_payload})
 
 
 def push_to_zammad(task):
     client = ZammadClient()
 
+    station = task.created_by.station
+    company = station.company if station else None
+
+    group_name = company.name if company else 'Users'
+    client.get_or_create_group(group_name)
+
+    if station:
+        client.get_or_create_organization(station.name)
+
     zammad_ticket = client.post('/tickets', {
         'title': task.title,
-        'group': 'Users',
-        'customer': task.created_by.email or task.created_by.username,
+        'group': group_name,
+        'organization': station.name if station else None,
+        'customer': task.created_by.username,
         'article': {
             'subject': task.title,
             'body': task.description or task.title,
