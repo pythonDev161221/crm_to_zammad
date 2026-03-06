@@ -135,29 +135,32 @@ class ITWorkerListView(APIView):
 class StationWorkersView(APIView):
     permission_classes = [IsAuthenticated, IsStationManager]
 
-    def _get_station(self, user):
+    def _get_stations(self, user):
         from users.models import Station
-        try:
-            return Station.objects.get(manager=user)
-        except Station.DoesNotExist:
-            pass
-        try:
-            return Station.objects.get(deputy=user)
-        except Station.DoesNotExist:
-            return None
+        from django.db.models import Q
+        return list(Station.objects.filter(Q(manager=user) | Q(deputies=user)).distinct())
 
     def get(self, request):
-        station = self._get_station(request.user)
-        if not station:
+        stations = self._get_stations(request.user)
+        if not stations:
             return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
-        workers = User.objects.filter(station=station, role=User.Role.WORKER)
-        data = [{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active} for u in workers]
+        station_ids = [s.id for s in stations]
+        workers = User.objects.filter(station_id__in=station_ids, role=User.Role.WORKER)
+        data = [{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active, 'station': u.station.name if u.station else None} for u in workers]
         return Response(data)
 
     def post(self, request):
-        station = self._get_station(request.user)
-        if not station:
+        stations = self._get_stations(request.user)
+        if not stations:
             return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
+        # Use station_id from request if manager manages multiple, default to first
+        station_id = request.data.get('station_id')
+        if station_id:
+            station = next((s for s in stations if s.id == int(station_id)), None)
+            if not station:
+                return Response({'detail': 'Station not found or not yours.'}, status=status.HTTP_403_FORBIDDEN)
+        else:
+            station = stations[0]
 
         username = request.data.get('username', '').strip()
         password = request.data.get('password', '').strip()
@@ -184,24 +187,19 @@ class StationWorkersView(APIView):
 class StationWorkerDeleteView(APIView):
     permission_classes = [IsAuthenticated, IsStationManager]
 
-    def _get_station(self, user):
+    def _get_stations(self, user):
         from users.models import Station
-        try:
-            return Station.objects.get(manager=user)
-        except Station.DoesNotExist:
-            pass
-        try:
-            return Station.objects.get(deputy=user)
-        except Station.DoesNotExist:
-            return None
+        from django.db.models import Q
+        return list(Station.objects.filter(Q(manager=user) | Q(deputies=user)).distinct())
 
     def delete(self, request, pk):
-        station = self._get_station(request.user)
-        if not station:
+        stations = self._get_stations(request.user)
+        if not stations:
             return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
+        station_ids = [s.id for s in stations]
 
         try:
-            worker = User.objects.get(pk=pk, station=station, role=User.Role.WORKER)
+            worker = User.objects.get(pk=pk, station_id__in=station_ids, role=User.Role.WORKER)
         except User.DoesNotExist:
             return Response({'detail': 'Worker not found in your station.'}, status=status.HTTP_404_NOT_FOUND)
 

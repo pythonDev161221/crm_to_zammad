@@ -21,18 +21,17 @@ class User(AbstractUser):
 
 class Station(models.Model):
     name = models.CharField(max_length=255)
-    manager = models.OneToOneField(
-        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_station'
+    manager = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_stations'
     )
-    deputy = models.OneToOneField(
-        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='deputy_station'
+    deputies = models.ManyToManyField(
+        User, blank=True, related_name='deputy_stations'
     )
 
     def is_managed_by(self, user):
-        return user.pk in (
-            self.manager_id,
-            self.deputy_id,
-        )
+        if self.manager_id == user.pk:
+            return True
+        return self.deputies.filter(pk=user.pk).exists()
 
     def __str__(self):
         return self.name
