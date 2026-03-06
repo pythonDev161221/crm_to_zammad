@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from users.models import User, Station
-from tasks.models import Task, Ticket, Comment
+from tasks.models import Task, Ticket, Comment, CommentPhoto
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -16,12 +16,19 @@ class StationSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'manager')
 
 
+class CommentPhotoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommentPhoto
+        fields = ('id', 'image')
+
+
 class CommentSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source='author.get_full_name', read_only=True)
+    photos = CommentPhotoSerializer(many=True, read_only=True)
 
     class Meta:
         model = Comment
-        fields = ('id', 'author', 'author_name', 'text', 'created_at')
+        fields = ('id', 'author', 'author_name', 'text', 'is_internal', 'photos', 'created_at')
         read_only_fields = ('author', 'created_at')
 
 
@@ -36,7 +43,7 @@ class TicketSerializer(serializers.ModelSerializer):
 
 class TaskSerializer(serializers.ModelSerializer):
     tickets = TicketSerializer(many=True, read_only=True)
-    comments = CommentSerializer(many=True, read_only=True)
+    comments = serializers.SerializerMethodField()
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
 
     class Meta:
@@ -44,6 +51,13 @@ class TaskSerializer(serializers.ModelSerializer):
         fields = ('id', 'title', 'description', 'status', 'created_by', 'created_by_name',
                   'tickets', 'comments', 'created_at', 'resolved_at')
         read_only_fields = ('created_by', 'created_at', 'resolved_at')
+
+    def get_comments(self, obj):
+        request = self.context.get('request')
+        qs = obj.comments.prefetch_related('photos').all()
+        if request and request.user.role == User.Role.WORKER:
+            qs = qs.filter(is_internal=False)
+        return CommentSerializer(qs, many=True, context=self.context).data
 
 
 class TaskCreateSerializer(serializers.ModelSerializer):

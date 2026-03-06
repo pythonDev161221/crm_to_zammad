@@ -161,9 +161,20 @@ function renderTaskDetail(task) {
     </div>
 
     <!-- Comment input -->
-    <div class="comment-input-row">
-      <input id="comment-input" type="text" placeholder="Write a comment...">
-      <button onclick="submitComment(${task.id})">&#10148;</button>
+    <div class="comment-input-area">
+      ${isITWorker ? `
+        <div class="comment-internal-toggle">
+          <label><input type="checkbox" id="comment-internal"> Internal (IT staff only)</label>
+        </div>` : ''}
+      <div class="comment-input-row">
+        <input id="comment-input" type="text" placeholder="Write a comment...">
+        <label class="comment-photo-btn" title="Attach photo">
+          &#128247;
+          <input type="file" id="comment-photos" accept="image/*" multiple style="display:none">
+        </label>
+        <button onclick="submitComment(${task.id})">&#10148;</button>
+      </div>
+      <div id="comment-photo-preview" class="comment-photo-preview"></div>
     </div>
 
     <!-- IT Worker actions -->
@@ -198,9 +209,16 @@ function renderTicketActions(ticket) {
 function renderComments(comments) {
   if (!comments?.length) return '<div class="empty" style="padding:10px">No comments yet.</div>';
   return comments.map(c => `
-    <div class="comment">
-      <div class="comment-author">${escHtml(c.author_name)}</div>
-      <div class="comment-text">${escHtml(c.text)}</div>
+    <div class="comment ${c.is_internal ? 'comment-internal' : ''}">
+      <div class="comment-author">
+        ${escHtml(c.author_name)}
+        ${c.is_internal ? '<span class="comment-internal-badge">Internal</span>' : ''}
+      </div>
+      ${c.text ? `<div class="comment-text">${escHtml(c.text)}</div>` : ''}
+      ${c.photos?.length ? `
+        <div class="comment-photos">
+          ${c.photos.map(p => `<img class="comment-photo" src="${p.image}" onclick="openPhoto('${p.image}')">`).join('')}
+        </div>` : ''}
       <div class="comment-time">${formatDate(c.created_at)}</div>
     </div>
   `).join('');
@@ -251,10 +269,20 @@ window.resolveTask = async function(taskId) {
 window.submitComment = async function(taskId) {
   const input = document.getElementById('comment-input');
   const text = input.value.trim();
-  if (!text) return;
+  const photoInput = document.getElementById('comment-photos');
+  const photos = photoInput ? [...photoInput.files] : [];
+  const isInternal = document.getElementById('comment-internal')?.checked || false;
+
+  if (!text && !photos.length) return;
+
   try {
-    await api.addComment(taskId, text);
+    await api.addComment(taskId, text, isInternal, photos);
     input.value = '';
+    if (photoInput) photoInput.value = '';
+    document.getElementById('comment-photo-preview').innerHTML = '';
+    if (document.getElementById('comment-internal')) {
+      document.getElementById('comment-internal').checked = false;
+    }
     await openTask(taskId);
   } catch (e) {
     tgAlert(e.message);
@@ -448,6 +476,29 @@ window.submitChangePassword = async function() {
   } catch (e) {
     tgAlert(e.message);
   }
+};
+
+// ── Photo preview ─────────────────────────────────────────────────────────────
+
+document.addEventListener('change', function(e) {
+  if (e.target.id !== 'comment-photos') return;
+  const preview = document.getElementById('comment-photo-preview');
+  if (!preview) return;
+  preview.innerHTML = '';
+  [...e.target.files].forEach(file => {
+    const img = document.createElement('img');
+    img.className = 'comment-photo';
+    img.src = URL.createObjectURL(file);
+    preview.appendChild(img);
+  });
+});
+
+window.openPhoto = function(src) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:999;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `<img src="${src}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
+  overlay.onclick = () => overlay.remove();
+  document.body.appendChild(overlay);
 };
 
 // ── Start ─────────────────────────────────────────────────────────────────────

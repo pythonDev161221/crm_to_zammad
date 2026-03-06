@@ -118,5 +118,15 @@ def push_to_zammad(task):
             'internal': True,
         })
 
+    for comment in task.comments.select_related('author').all():
+        author_name = comment.author.get_full_name() or comment.author.username
+        client.post('/ticket_articles', {
+            'ticket_id': zammad_ticket_id,
+            'subject': f'Comment by {author_name}',
+            'body': comment.text or '(photo)',
+            'type': 'note',
+            'internal': comment.is_internal,
+        })
+
     task.zammad_synced = True
     task.save(update_fields=['zammad_synced'])

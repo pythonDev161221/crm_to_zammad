@@ -30,9 +30,11 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
+    from django.conf.urls.static import static
     from api.dev_views import DevLoginPageView, DevUsersView, DevLoginView
     urlpatterns += [
         path('dev/', DevLoginPageView.as_view(), name='dev-login'),
         path('dev/users/', DevUsersView.as_view(), name='dev-users'),
         path('dev/login/', DevLoginView.as_view(), name='dev-login-api'),
     ]
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -128,8 +128,19 @@ class CommentCreateView(generics.CreateAPIView):
     serializer_class = CommentSerializer
 
     def perform_create(self, serializer):
+        from tasks.models import CommentPhoto
         task = generics.get_object_or_404(Task, pk=self.kwargs['task_pk'])
-        serializer.save(task=task, author=self.request.user)
+        user = self.request.user
+        is_internal = serializer.validated_data.get('is_internal', False)
+
+        if is_internal and user.role == User.Role.WORKER:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Workers cannot create internal comments.')
+
+        comment = serializer.save(task=task, author=user)
+
+        for photo in self.request.FILES.getlist('photos'):
+            CommentPhoto.objects.create(comment=comment, image=photo)
 
 
 class ITWorkerListView(APIView):

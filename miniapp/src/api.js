@@ -7,13 +7,22 @@ export function setToken(token) {
 }
 
 async function request(method, path, body = null) {
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = {};
   if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+  let requestBody = null;
+  if (body instanceof FormData) {
+    requestBody = body;
+    // Don't set Content-Type — browser sets it with boundary for FormData
+  } else if (body) {
+    headers['Content-Type'] = 'application/json';
+    requestBody = JSON.stringify(body);
+  }
 
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : null,
+    body: requestBody,
   });
 
   if (!res.ok) {
@@ -43,7 +52,13 @@ export const api = {
   updateTicket: (id, data) => request('PATCH', `/tickets/${id}/`, data),
 
   // Comments
-  addComment: (taskId, text) => request('POST', `/tasks/${taskId}/comments/`, { text }),
+  addComment: (taskId, text, isInternal, photos) => {
+    const form = new FormData();
+    form.append('text', text);
+    form.append('is_internal', isInternal ? 'true' : 'false');
+    if (photos) photos.forEach(p => form.append('photos', p));
+    return request('POST', `/tasks/${taskId}/comments/`, form);
+  },
 
   // IT Workers
   getITWorkers: (taskId) => request('GET', `/it-workers/${taskId ? `?task_id=${taskId}` : ''}`),
