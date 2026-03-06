@@ -1,0 +1,8 @@
+django
+djangorestframework
+psycopg2-binary
+python-decouple
+requests
+djangorestframework-simplejwt
+pillow
+gunicorn
