@@ -25,6 +25,7 @@ class PushToZammadTests(TestCase):
     def _make_resolved_ticket(self):
         ticket = Ticket.objects.create(
             created_by=self.worker,
+            station=self.station,
             title='Printer broken',
             description='Does not print',
             status=Ticket.Status.RESOLVED,

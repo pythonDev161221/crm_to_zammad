@@ -12,6 +12,11 @@ class IsITWorker(BasePermission):
         return request.user.role in (User.Role.IT_WORKER, User.Role.ADMIN)
 
 
+class IsITOrSupplyWorker(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.role in (User.Role.IT_WORKER, User.Role.SUPPLY_WORKER, User.Role.ADMIN)
+
+
 class IsStationManager(BasePermission):
     def has_permission(self, request, view):
         return request.user.role in (User.Role.STATION_MANAGER, User.Role.ADMIN)
@@ -20,3 +25,8 @@ class IsStationManager(BasePermission):
 class IsWorker(BasePermission):
     def has_permission(self, request, view):
         return request.user.role == User.Role.WORKER
+
+
+class IsWorkerOrStationManager(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.role in (User.Role.WORKER, User.Role.STATION_MANAGER)

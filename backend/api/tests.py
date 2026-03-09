@@ -39,8 +39,10 @@ class BaseSetup(APITestCase):
         self.worker2 = make_user('worker2', User.Role.WORKER, station=self.station)
 
     def make_ticket(self, created_by=None):
+        user = created_by or self.worker
         return Ticket.objects.create(
-            created_by=created_by or self.worker,
+            created_by=user,
+            station=user.station,
             title='Printer broken',
             description='Does not print',
         )
@@ -102,7 +104,7 @@ class TicketListTests(BaseSetup):
         ids = [t['id'] for t in res.data]
         self.assertIn(ticket.id, ids)
 
-    def test_admin_sees_all_tickets(self):
+    def test_admin_sees_non_resolved_tickets(self):
         t1 = self.make_ticket(self.worker)
         t2 = self.make_ticket(self.worker2)
         auth(self.client, self.admin)
@@ -110,6 +112,43 @@ class TicketListTests(BaseSetup):
         ids = [t['id'] for t in res.data]
         self.assertIn(t1.id, ids)
         self.assertIn(t2.id, ids)
+
+    def test_nobody_sees_resolved_tickets(self):
+        ticket = self.make_ticket(self.worker)
+        ticket.status = Ticket.Status.RESOLVED
+        ticket.save()
+        for user in [self.worker, self.it1, self.manager, self.admin]:
+            auth(self.client, user)
+            res = self.client.get('/api/tickets/')
+            ids = [t['id'] for t in res.data]
+            self.assertNotIn(ticket.id, ids, msg=f'{user.role} should not see resolved ticket')
+
+    def test_manager_sees_tickets_from_their_station(self):
+        t1 = self.make_ticket(self.worker)
+        t2 = self.make_ticket(self.worker2)
+        auth(self.client, self.manager)
+        res = self.client.get('/api/tickets/')
+        ids = [t['id'] for t in res.data]
+        self.assertIn(t1.id, ids)
+        self.assertIn(t2.id, ids)
+
+    def test_manager_cannot_see_tickets_from_other_station(self):
+        other_station = Station.objects.create(name='AZS-99', company=self.company)
+        other_worker = make_user('other_w2', User.Role.WORKER, station=other_station)
+        ticket = self.make_ticket(other_worker)
+        auth(self.client, self.manager)
+        res = self.client.get('/api/tickets/')
+        ids = [t['id'] for t in res.data]
+        self.assertNotIn(ticket.id, ids)
+
+    def test_it_worker_sees_in_progress_ticket_from_company(self):
+        ticket = self.make_ticket(self.worker)
+        ticket.status = Ticket.Status.IN_PROGRESS
+        ticket.save()
+        auth(self.client, self.it1)
+        res = self.client.get('/api/tickets/')
+        ids = [t['id'] for t in res.data]
+        self.assertIn(ticket.id, ids)
 
     def test_worker_can_create_ticket(self):
         auth(self.client, self.worker)
@@ -120,6 +159,35 @@ class TicketListTests(BaseSetup):
     def test_it_worker_cannot_create_ticket(self):
         auth(self.client, self.it1)
         res = self.client.post('/api/tickets/', {'title': 'Test', 'description': ''})
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_manager_can_create_ticket_single_station(self):
+        auth(self.client, self.manager)
+        res = self.client.post('/api/tickets/', {'title': 'Supply issue', 'description': ''})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        ticket = Ticket.objects.filter(created_by=self.manager).first()
+        self.assertIsNotNone(ticket)
+        self.assertEqual(ticket.station, self.station)
+
+    def test_manager_must_choose_station_if_multiple(self):
+        station2 = Station.objects.create(name='AZS-2', company=self.company)
+        station2.deputies.add(self.manager)
+        auth(self.client, self.manager)
+        # without station_id → error
+        res = self.client.post('/api/tickets/', {'title': 'Issue', 'description': ''})
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        # with station_id → success
+        res = self.client.post('/api/tickets/', {'title': 'Issue', 'description': '', 'station_id': station2.id})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        ticket = Ticket.objects.filter(created_by=self.manager).first()
+        self.assertEqual(ticket.station, station2)
+
+    def test_manager_cannot_create_ticket_for_other_station(self):
+        other_station = Station.objects.create(name='AZS-99', company=self.company)
+        station2 = Station.objects.create(name='AZS-2', company=self.company)
+        station2.deputies.add(self.manager)
+        auth(self.client, self.manager)
+        res = self.client.post('/api/tickets/', {'title': 'Issue', 'description': '', 'station_id': other_station.id})
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
 
@@ -278,6 +346,22 @@ class CommentTests(BaseSetup):
         self.assertNotIn('private', texts)
         self.assertIn('public', texts)
 
+    def test_manager_cannot_post_comment(self):
+        ticket = self.make_ticket(self.worker)
+        auth(self.client, self.manager)
+        res = self.client.post(f'/api/tickets/{ticket.id}/comments/', {'text': 'hello'})
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_manager_cannot_see_internal_comments(self):
+        ticket = self.make_ticket(self.worker)
+        Comment.objects.create(ticket=ticket, author=self.it1, text='secret', is_internal=True)
+        Comment.objects.create(ticket=ticket, author=self.it1, text='public', is_internal=False)
+        auth(self.client, self.manager)
+        res = self.client.get(f'/api/tickets/{ticket.id}/')
+        texts = [c['text'] for c in res.data['comments']]
+        self.assertNotIn('secret', texts)
+        self.assertIn('public', texts)
+
     def test_it_worker_sees_all_comments(self):
         ticket = self.make_ticket(self.worker)
         self.make_task(ticket, self.it1)
@@ -365,6 +449,96 @@ class StationWorkerTests(BaseSetup):
             'password': 'pass1234',
         })
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+# ── Supply Worker ─────────────────────────────────────────────────────────────
+
+class SupplyWorkerTests(BaseSetup):
+    def setUp(self):
+        super().setUp()
+        self.supply = make_user('supply1', User.Role.SUPPLY_WORKER, companies=[self.company])
+
+    def test_supply_worker_sees_only_delegated_tickets(self):
+        t_delegated = self.make_ticket(self.worker)
+        t_other = self.make_ticket(self.worker2)
+        Task.objects.create(ticket=t_delegated, assigned_to=self.supply)
+        auth(self.client, self.supply)
+        res = self.client.get('/api/tickets/')
+        ids = [t['id'] for t in res.data]
+        self.assertIn(t_delegated.id, ids)
+        self.assertNotIn(t_other.id, ids)
+
+    def test_supply_worker_sees_no_tickets_without_task(self):
+        self.make_ticket(self.worker)
+        auth(self.client, self.supply)
+        res = self.client.get('/api/tickets/')
+        self.assertEqual(res.data, [])
+
+    def test_supply_worker_cannot_see_resolved_ticket(self):
+        ticket = self.make_ticket(self.worker)
+        Task.objects.create(ticket=ticket, assigned_to=self.supply)
+        ticket.status = Ticket.Status.RESOLVED
+        ticket.save()
+        auth(self.client, self.supply)
+        res = self.client.get('/api/tickets/')
+        self.assertEqual(res.data, [])
+
+    def test_supply_worker_can_update_task_status(self):
+        ticket = self.make_ticket(self.worker)
+        task = Task.objects.create(ticket=ticket, assigned_to=self.supply)
+        auth(self.client, self.supply)
+        res = self.client.patch(f'/api/tasks/{task.id}/', {'status': 'in_progress'})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        task.refresh_from_db()
+        self.assertEqual(task.status, Task.Status.IN_PROGRESS)
+
+    def test_supply_worker_cannot_update_others_task(self):
+        ticket = self.make_ticket(self.worker)
+        task = self.make_task(ticket, self.it1)
+        auth(self.client, self.supply)
+        res = self.client.patch(f'/api/tasks/{task.id}/', {'status': 'in_progress'})
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_supply_worker_cannot_see_internal_comments(self):
+        ticket = self.make_ticket(self.worker)
+        Task.objects.create(ticket=ticket, assigned_to=self.supply)
+        Comment.objects.create(ticket=ticket, author=self.it1, text='secret', is_internal=True)
+        Comment.objects.create(ticket=ticket, author=self.it1, text='public', is_internal=False)
+        auth(self.client, self.supply)
+        res = self.client.get(f'/api/tickets/{ticket.id}/')
+        texts = [c['text'] for c in res.data['comments']]
+        self.assertNotIn('secret', texts)
+        self.assertIn('public', texts)
+
+    def test_supply_worker_cannot_post_internal_comment(self):
+        ticket = self.make_ticket(self.worker)
+        Task.objects.create(ticket=ticket, assigned_to=self.supply)
+        auth(self.client, self.supply)
+        res = self.client.post(f'/api/tickets/{ticket.id}/comments/', {
+            'text': 'internal', 'is_internal': True
+        })
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_supply_worker_appears_in_delegation_list(self):
+        ticket = self.make_ticket(self.worker)
+        auth(self.client, self.it1)
+        res = self.client.get(f'/api/it-workers/?ticket_id={ticket.id}')
+        ids = [w['id'] for w in res.data]
+        self.assertIn(self.supply.id, ids)
+
+    def test_supply_worker_cannot_resolve_ticket(self):
+        ticket = self.make_ticket(self.worker)
+        task = Task.objects.create(ticket=ticket, assigned_to=self.supply)
+        task.status = Task.Status.DONE
+        task.save()
+        auth(self.client, self.supply)
+        res = self.client.post(f'/api/tickets/{ticket.id}/resolve/')
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_supply_worker_cannot_create_ticket(self):
+        auth(self.client, self.supply)
+        res = self.client.post('/api/tickets/', {'title': 'Test', 'description': ''})
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
 
 # ── Change Password ───────────────────────────────────────────────────────────

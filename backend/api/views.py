@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from tasks.models import Ticket, Task, Comment
 from users.models import User
 from zammad_bridge.client import push_to_zammad
-from .permissions import IsITWorker, IsStationManager, IsWorker
+from .permissions import IsITWorker, IsITOrSupplyWorker, IsStationManager, IsWorker, IsWorkerOrStationManager
 from .serializers import (
     TicketSerializer, TicketCreateSerializer,
     TaskSerializer, CommentSerializer, UserSerializer,
@@ -24,7 +24,7 @@ class MeView(APIView):
 class TicketListCreateView(generics.ListCreateAPIView):
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [IsAuthenticated(), IsWorker()]
+            return [IsAuthenticated(), IsWorkerOrStationManager()]
         return [IsAuthenticated()]
 
     def get_serializer_class(self):
@@ -34,20 +34,50 @@ class TicketListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        qs = Ticket.objects.exclude(status=Ticket.Status.RESOLVED)
         if user.role == User.Role.WORKER:
-            return Ticket.objects.filter(created_by=user)
+            return qs.filter(created_by=user)
+        if user.role == User.Role.STATION_MANAGER:
+            from django.db.models import Q
+            from users.models import Station
+            station_ids = Station.objects.filter(
+                Q(manager=user) | Q(deputies=user)
+            ).values_list('id', flat=True)
+            return qs.filter(station_id__in=station_ids)
+        if user.role == User.Role.SUPPLY_WORKER:
+            return qs.filter(tasks__assigned_to=user).distinct()
         if user.role == User.Role.IT_WORKER:
             from django.db.models import Q
             user_companies = user.companies.all()
-            return Ticket.objects.filter(
-                Q(status=Ticket.Status.OPEN, created_by__station__company__in=user_companies) |
+            return qs.filter(
+                Q(station__company__in=user_companies) |
                 Q(tasks__assigned_to=user)
             ).distinct()
-        return Ticket.objects.all()
+        return qs  # admin: all non-resolved
 
     def perform_create(self, serializer):
         from tasks.models import TicketPhoto
-        ticket = serializer.save(created_by=self.request.user)
+        from users.models import Station
+        from django.db.models import Q
+        from rest_framework.exceptions import ValidationError, PermissionDenied as DRFPermissionDenied
+
+        user = self.request.user
+
+        if user.role == User.Role.STATION_MANAGER:
+            stations = list(Station.objects.filter(Q(manager=user) | Q(deputies=user)).distinct())
+            if len(stations) == 1:
+                station = stations[0]
+            else:
+                station_id = self.request.data.get('station_id')
+                if not station_id:
+                    raise ValidationError({'station_id': 'You manage multiple stations. Please provide station_id.'})
+                station = next((s for s in stations if s.id == int(station_id)), None)
+                if not station:
+                    raise DRFPermissionDenied('Station not found or not yours.')
+        else:
+            station = user.station
+
+        ticket = serializer.save(created_by=user, station=station)
         for photo in self.request.FILES.getlist('photos'):
             TicketPhoto.objects.create(ticket=ticket, image=photo)
 
@@ -58,16 +88,26 @@ class TicketDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        qs = Ticket.objects.exclude(status=Ticket.Status.RESOLVED)
         if user.role == User.Role.WORKER:
-            return Ticket.objects.filter(created_by=user)
+            return qs.filter(created_by=user)
+        if user.role == User.Role.STATION_MANAGER:
+            from django.db.models import Q
+            from users.models import Station
+            station_ids = Station.objects.filter(
+                Q(manager=user) | Q(deputies=user)
+            ).values_list('id', flat=True)
+            return qs.filter(station_id__in=station_ids)
+        if user.role == User.Role.SUPPLY_WORKER:
+            return qs.filter(tasks__assigned_to=user).distinct()
         if user.role == User.Role.IT_WORKER:
             from django.db.models import Q
             user_companies = user.companies.all()
-            return Ticket.objects.filter(
-                Q(status=Ticket.Status.OPEN, created_by__station__company__in=user_companies) |
+            return qs.filter(
+                Q(station__company__in=user_companies) |
                 Q(tasks__assigned_to=user)
             ).distinct()
-        return Ticket.objects.all()
+        return qs  # admin: all non-resolved
 
 
 class TicketResolveView(APIView):
@@ -113,7 +153,7 @@ class TaskCreateView(generics.CreateAPIView):
 
 
 class TaskUpdateView(generics.UpdateAPIView):
-    permission_classes = [IsAuthenticated, IsITWorker]
+    permission_classes = [IsAuthenticated, IsITOrSupplyWorker]
     serializer_class = TaskSerializer
 
     def get_queryset(self):
@@ -141,7 +181,11 @@ class CommentCreateView(generics.CreateAPIView):
         user = self.request.user
         is_internal = serializer.validated_data.get('is_internal', False)
 
-        if is_internal and user.role == User.Role.WORKER:
+        if user.role == User.Role.STATION_MANAGER:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Station managers cannot post comments.')
+
+        if is_internal and user.role in (User.Role.WORKER, User.Role.SUPPLY_WORKER):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('Workers cannot create internal comments.')
 
@@ -156,7 +200,9 @@ class ITWorkerListView(APIView):
 
     def get(self, request):
         ticket_id = request.query_params.get('ticket_id')  # filter by ticket's company
-        qs = User.objects.filter(role=User.Role.IT_WORKER).exclude(pk=request.user.pk)
+        qs = User.objects.filter(
+            role__in=[User.Role.IT_WORKER, User.Role.SUPPLY_WORKER]
+        ).exclude(pk=request.user.pk)
         if ticket_id:
             try:
                 ticket = Ticket.objects.get(pk=ticket_id)

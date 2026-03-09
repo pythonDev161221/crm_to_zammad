@@ -74,7 +74,7 @@ class ZammadClient:
 def push_to_zammad(ticket):
     client = ZammadClient()
 
-    station = ticket.created_by.station
+    station = ticket.station
     company = station.company if station else None
 
     group_name = company.name if company else 'Users'

@@ -11,6 +11,9 @@ class Ticket(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='tickets'
     )
+    station = models.ForeignKey(
+        'users.Station', on_delete=models.PROTECT, null=True, blank=True, related_name='tickets'
+    )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
