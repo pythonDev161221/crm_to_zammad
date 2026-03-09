@@ -294,6 +294,18 @@ class StationWorkerDeleteView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class MyStationsView(APIView):
+    permission_classes = [IsAuthenticated, IsStationManager]
+
+    def get(self, request):
+        from users.models import Station
+        from django.db.models import Q
+        stations = Station.objects.filter(
+            Q(manager=request.user) | Q(deputies=request.user)
+        ).distinct()
+        return Response([{'id': s.id, 'name': s.name} for s in stations])
+
+
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
 

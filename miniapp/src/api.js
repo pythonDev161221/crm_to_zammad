@@ -43,13 +43,17 @@ export const api = {
   // Tickets (reported by worker)
   getTickets: () => request('GET', '/tickets/'),
   getTicket: (id) => request('GET', `/tickets/${id}/`),
-  createTicket: (title, description, photos) => {
+  createTicket: (title, description, photos, stationId = null) => {
     const form = new FormData();
     form.append('title', title);
     form.append('description', description);
+    if (stationId) form.append('station_id', stationId);
     if (photos) photos.forEach(p => form.append('photos', p));
     return request('POST', '/tickets/', form);
   },
+
+  // Station manager: list their own stations
+  getMyStations: () => request('GET', '/my-stations/'),
   resolveTicket: (id) => request('POST', `/tickets/${id}/resolve/`),
 
   // Tasks (assigned to IT workers within a ticket)

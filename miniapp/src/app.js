@@ -73,7 +73,7 @@ function renderTicketList(tickets) {
   const role = currentUser.role;
 
   const fab = document.getElementById('fab-new-ticket');
-  fab.style.display = role === 'worker' ? 'flex' : 'none';
+  fab.style.display = (role === 'worker' || role === 'station_manager') ? 'flex' : 'none';
 
   const btnStation = document.getElementById('btn-station');
   btnStation.style.display = role === 'station_manager' ? 'inline' : 'none';
@@ -117,6 +117,9 @@ function renderTicketDetail(ticket) {
   const body = document.getElementById('ticket-detail-body');
   const role = currentUser.role;
   const isITWorker = role === 'it_worker' || role === 'admin';
+  const isSupplyWorker = role === 'supply_worker';
+  const isManager = role === 'station_manager';
+  const canComment = !isManager;
   const myTask = ticket.tasks?.find(t => t.assigned_to === currentUser.id);
 
   body.innerHTML = `
@@ -137,7 +140,7 @@ function renderTicketDetail(ticket) {
             </div>` : ''}
         </div>` : ''}
 
-      <!-- Tasks (IT workers / admin see all) -->
+      <!-- Tasks -->
       ${isITWorker ? `
         <div class="detail-section">
           <h3>Tasks</h3>
@@ -152,6 +155,18 @@ function renderTicketDetail(ticket) {
             </div>
           `).join('') : '<div class="empty" style="padding:10px">No tasks yet.</div>'}
         </div>` : ''}
+      ${isSupplyWorker && myTask ? `
+        <div class="detail-section">
+          <h3>My Task</h3>
+          <div class="ticket-card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="ticket-worker">${escHtml(myTask.assigned_to_name)}</div>
+              <span class="badge badge-${myTask.status}">${formatStatus(myTask.status)}</span>
+            </div>
+            ${myTask.notes ? `<div class="ticket-notes">${escHtml(myTask.notes)}</div>` : ''}
+            ${renderTaskActions(myTask)}
+          </div>
+        </div>` : ''}
 
       <!-- Comments -->
       <div class="detail-section" id="comments-section">
@@ -160,7 +175,8 @@ function renderTicketDetail(ticket) {
       </div>
     </div>
 
-    <!-- Comment input -->
+    <!-- Comment input (not for station managers) -->
+    ${canComment ? `
     <div class="comment-input-area">
       ${isITWorker ? `
         <div class="comment-internal-toggle">
@@ -175,7 +191,7 @@ function renderTicketDetail(ticket) {
         <button onclick="submitComment(${ticket.id})">&#10148;</button>
       </div>
       <div id="comment-photo-preview" class="comment-photo-preview"></div>
-    </div>
+    </div>` : ''}
 
     <!-- IT Worker actions -->
     ${isITWorker && ticket.status !== 'resolved' ? `
@@ -348,12 +364,28 @@ window.submitDelegate = async function() {
 
 // ── Create Ticket ─────────────────────────────────────────────────────────────
 
-window.showCreateTicket = function() {
+window.showCreateTicket = async function() {
   showScreen('screen-create-ticket');
   document.getElementById('new-ticket-title').value = '';
   document.getElementById('new-ticket-desc').value = '';
   document.getElementById('new-ticket-photos').value = '';
   document.getElementById('new-ticket-photo-preview').innerHTML = '';
+
+  const stationField = document.getElementById('station-select-field');
+  stationField.style.display = 'none';
+
+  if (currentUser.role === 'station_manager') {
+    try {
+      const stations = await api.getMyStations();
+      if (stations.length > 1) {
+        const select = document.getElementById('new-ticket-station');
+        select.innerHTML = stations.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+        stationField.style.display = '';
+      }
+    } catch (e) {
+      tgAlert('Could not load stations: ' + e.message);
+    }
+  }
 };
 
 window.previewTicketPhotos = function(input) {
@@ -378,8 +410,16 @@ window.submitCreateTicket = async function() {
     return;
   }
 
+  let stationId = null;
+  if (currentUser.role === 'station_manager') {
+    const stationField = document.getElementById('station-select-field');
+    if (stationField.style.display !== 'none') {
+      stationId = document.getElementById('new-ticket-station').value;
+    }
+  }
+
   try {
-    await api.createTicket(title, description, photos);
+    await api.createTicket(title, description, photos, stationId);
     await loadTickets();
     showScreen('screen-tickets');
   } catch (e) {

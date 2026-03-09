@@ -23,6 +23,9 @@ urlpatterns = [
     path('station/workers/', views.StationWorkersView.as_view(), name='station-workers'),
     path('station/workers/<int:pk>/', views.StationWorkerDeleteView.as_view(), name='station-worker-delete'),
 
+    # Station manager: their own stations
+    path('my-stations/', views.MyStationsView.as_view(), name='my-stations'),
+
     # Change password
     path('auth/change-password/', views.ChangePasswordView.as_view(), name='change-password'),
 ]
