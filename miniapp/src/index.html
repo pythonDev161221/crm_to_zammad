@@ -15,6 +15,27 @@
     <div class="loading">Connecting...</div>
   </div>
 
+  <!-- Link Account -->
+  <div id="screen-link-account" class="screen">
+    <div class="header">
+      <h1>Activate Account</h1>
+    </div>
+    <div class="form">
+      <p style="color:var(--text-secondary);margin-bottom:16px;font-size:14px">
+        Enter the username and password given to you by your station manager.
+      </p>
+      <div class="field">
+        <label>Username</label>
+        <input id="link-username" type="text" placeholder="your_username" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input id="link-password" type="password" placeholder="Your password" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" onclick="submitLinkAccount()">Activate</button>
+    </div>
+  </div>
+
   <!-- Ticket List -->
   <div id="screen-tickets" class="screen">
     <div class="header">

@@ -4,6 +4,7 @@ import json
 from urllib.parse import unquote, parse_qsl
 
 from django.conf import settings
+from django.contrib.auth import authenticate
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -55,15 +56,49 @@ class TelegramAuthView(APIView):
             return Response({'detail': 'Invalid Telegram data.'}, status=status.HTTP_401_UNAUTHORIZED)
 
         telegram_id = user_data['id']
-        user, _ = User.objects.get_or_create(
-            telegram_id=telegram_id,
-            defaults={
-                'username': f'tg_{telegram_id}',
-                'first_name': user_data.get('first_name', ''),
-                'last_name': user_data.get('last_name', ''),
-                'role': User.Role.WORKER,
+        try:
+            user = User.objects.get(telegram_id=telegram_id)
+        except User.DoesNotExist:
+            return Response({'needs_linking': True}, status=status.HTTP_200_OK)
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': {
+                'id': user.id,
+                'role': user.role,
+                'name': user.get_full_name() or user.username,
             }
-        )
+        })
+
+
+class LinkAccountView(APIView):
+    permission_classes = []  # public endpoint
+
+    def post(self, request):
+        init_data = request.data.get('initData', '')
+        username = request.data.get('username', '').strip()
+        password = request.data.get('password', '')
+
+        user_data = verify_telegram_init_data(init_data)
+        if not user_data:
+            return Response({'detail': 'Invalid Telegram data.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        telegram_id = user_data['id']
+
+        if User.objects.filter(telegram_id=telegram_id).exists():
+            return Response({'detail': 'This Telegram account is already linked.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = authenticate(username=username, password=password)
+        if not user:
+            return Response({'detail': 'Invalid username or password.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        if user.telegram_id:
+            return Response({'detail': 'This account is already linked to another Telegram user.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.telegram_id = telegram_id
+        user.save(update_fields=['telegram_id'])
 
         refresh = RefreshToken.for_user(user)
         return Response({

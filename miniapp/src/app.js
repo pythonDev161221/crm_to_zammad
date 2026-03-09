@@ -48,6 +48,10 @@ async function init() {
       return;
     }
     const auth = await api.telegramAuth(initData);
+    if (auth.needs_linking) {
+      showScreen('screen-link-account');
+      return;
+    }
     setToken(auth.access);
     currentUser = auth.user;
     if (currentUser.role === 'it_manager') {
@@ -58,6 +62,25 @@ async function init() {
     showError('Auth failed: ' + e.message);
   }
 }
+
+window.submitLinkAccount = async function() {
+  const username = document.getElementById('link-username').value.trim();
+  const password = document.getElementById('link-password').value;
+  if (!username || !password) { tgAlert('Please enter username and password.'); return; }
+
+  const initData = tg?.initData || '';
+  try {
+    const auth = await api.linkAccount(initData, username, password);
+    setToken(auth.access);
+    currentUser = auth.user;
+    if (currentUser.role === 'it_manager') {
+      currentUser.companies = await api.getMyCompanies().catch(() => []);
+    }
+    await loadTickets();
+  } catch (e) {
+    tgAlert(e.message);
+  }
+};
 
 // ── Ticket List ───────────────────────────────────────────────────────────────
 

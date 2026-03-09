@@ -37,6 +37,9 @@ export const api = {
   telegramAuth: (initData) =>
     request('POST', '/auth/telegram/', { initData }),
 
+  linkAccount: (initData, username, password) =>
+    request('POST', '/auth/link/', { initData, username, password }),
+
   // Me
   getMe: () => request('GET', '/me/'),
 
