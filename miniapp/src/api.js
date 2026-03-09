@@ -95,6 +95,11 @@ export const api = {
   createStationWorker: (data) => request('POST', '/station/workers/', data),
   removeStationWorker: (id) => request('DELETE', `/station/workers/${id}/`),
 
+  // Deputy management (station manager only)
+  getStationDeputies: () => request('GET', '/station/deputies/'),
+  addStationDeputy: (data) => request('POST', '/station/deputies/', data),
+  removeStationDeputy: (id) => request('DELETE', `/station/deputies/${id}/`),
+
   // Password change
   changePassword: (old_password, new_password) =>
     request('POST', '/auth/change-password/', { old_password, new_password }),

@@ -62,7 +62,7 @@ class TicketSerializer(serializers.ModelSerializer):
     def get_comments(self, obj):
         request = self.context.get('request')
         qs = obj.comments.prefetch_related('photos').all()
-        if request and request.user.role in (User.Role.WORKER, User.Role.SUPPLY_WORKER, User.Role.STATION_MANAGER):
+        if request and request.user.role in (User.Role.WORKER, User.Role.SUPPLY_WORKER, User.Role.STATION_MANAGER, User.Role.DEPUTY):
             qs = qs.filter(is_internal=False)
         return CommentSerializer(qs, many=True, context=self.context).data
 

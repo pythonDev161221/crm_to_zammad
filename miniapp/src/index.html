@@ -19,7 +19,7 @@
   <div id="screen-tickets" class="screen">
     <div class="header">
       <h1>My Tickets</h1>
-      <button id="btn-station" class="back-btn" onclick="showStationWorkers()" style="display:none">AZS &#9881;</button>
+      <button id="btn-station" class="back-btn" onclick="showStationWorkers()" style="display:none">Station &#9881;</button>
       <button id="btn-manage" class="back-btn" onclick="showScreen('screen-manage')" style="display:none">Staff &#9881;</button>
       <button class="back-btn" onclick="showScreen('screen-change-password')" title="Change password">&#128273;</button>
     </div>
@@ -92,9 +92,63 @@
     <div class="header">
       <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
       <h1 id="station-name">My Station</h1>
+      <button id="btn-deputies" class="back-btn" onclick="showStationDeputies()" style="display:none">Deputies</button>
     </div>
     <div id="station-workers-list" class="card-list"></div>
     <button class="fab" onclick="showScreen('screen-add-worker')">+</button>
+  </div>
+
+  <!-- Station Deputies (manager only) -->
+  <div id="screen-station-deputies" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('screen-station-workers')">&#8592; Back</button>
+      <h1>Deputies</h1>
+    </div>
+    <div id="station-deputies-list" class="card-list"></div>
+    <button class="fab" onclick="showAddDeputy()">+</button>
+  </div>
+
+  <!-- Add Deputy -->
+  <div id="screen-add-deputy" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('screen-station-deputies')">&#8592; Back</button>
+      <h1>Add Deputy</h1>
+    </div>
+    <div class="form">
+      <div class="field">
+        <label>How</label>
+        <select id="deputy-type" onchange="toggleDeputyType(this.value)">
+          <option value="promote">Promote existing worker</option>
+          <option value="new">Create new account</option>
+        </select>
+      </div>
+      <div id="deputy-promote-section">
+        <div class="field">
+          <label>Select Worker</label>
+          <select id="deputy-worker-select"></select>
+        </div>
+        <button class="btn btn-primary" onclick="submitPromoteDeputy()">Promote to Deputy</button>
+      </div>
+      <div id="deputy-new-section" style="display:none">
+        <div class="field">
+          <label>First Name</label>
+          <input id="deputy-first" type="text" placeholder="Ivan">
+        </div>
+        <div class="field">
+          <label>Last Name</label>
+          <input id="deputy-last" type="text" placeholder="Petrov">
+        </div>
+        <div class="field">
+          <label>Username *</label>
+          <input id="deputy-username" type="text" placeholder="ivan_petrov">
+        </div>
+        <div class="field">
+          <label>Password *</label>
+          <input id="deputy-password" type="password" placeholder="min 6 characters">
+        </div>
+        <button class="btn btn-primary" onclick="submitCreateDeputy()">Create Deputy</button>
+      </div>
+    </div>
   </div>
 
   <!-- Add Worker -->

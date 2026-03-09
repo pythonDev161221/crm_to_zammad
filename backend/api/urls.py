@@ -22,6 +22,8 @@ urlpatterns = [
     # Station management
     path('station/workers/', views.StationWorkersView.as_view(), name='station-workers'),
     path('station/workers/<int:pk>/', views.StationWorkerDeleteView.as_view(), name='station-worker-delete'),
+    path('station/deputies/', views.StationDeputiesView.as_view(), name='station-deputies'),
+    path('station/deputies/<int:pk>/', views.StationDeputyDeleteView.as_view(), name='station-deputy-delete'),
 
     # Station manager: their own stations
     path('my-stations/', views.MyStationsView.as_view(), name='my-stations'),

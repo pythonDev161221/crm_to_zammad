@@ -541,6 +541,97 @@ class SupplyWorkerTests(BaseSetup):
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
 
+# ── Deputy ────────────────────────────────────────────────────────────────────
+
+class DeputyTests(BaseSetup):
+    def setUp(self):
+        super().setUp()
+        self.deputy = make_user('deputy1', User.Role.DEPUTY)
+        self.station.deputies.add(self.deputy)
+
+    def test_deputy_sees_station_tickets(self):
+        ticket = self.make_ticket(self.worker)
+        auth(self.client, self.deputy)
+        res = self.client.get('/api/tickets/')
+        self.assertIn(ticket.id, [t['id'] for t in res.data])
+
+    def test_deputy_cannot_see_other_station_tickets(self):
+        other_station = Station.objects.create(name='AZS-99', company=self.company)
+        other_worker = make_user('other_w3', User.Role.WORKER, station=other_station)
+        ticket = self.make_ticket(other_worker)
+        auth(self.client, self.deputy)
+        res = self.client.get('/api/tickets/')
+        self.assertNotIn(ticket.id, [t['id'] for t in res.data])
+
+    def test_deputy_can_create_ticket(self):
+        auth(self.client, self.deputy)
+        res = self.client.post('/api/tickets/', {'title': 'Deputy ticket', 'description': ''})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+    def test_deputy_cannot_post_comment(self):
+        ticket = self.make_ticket(self.worker)
+        auth(self.client, self.deputy)
+        res = self.client.post(f'/api/tickets/{ticket.id}/comments/', {'text': 'hello'})
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_deputy_cannot_see_internal_comments(self):
+        ticket = self.make_ticket(self.worker)
+        Comment.objects.create(ticket=ticket, author=self.it1, text='secret', is_internal=True)
+        auth(self.client, self.deputy)
+        res = self.client.get(f'/api/tickets/{ticket.id}/')
+        texts = [c['text'] for c in res.data['comments']]
+        self.assertNotIn('secret', texts)
+
+    def test_deputy_can_manage_station_workers(self):
+        auth(self.client, self.deputy)
+        res = self.client.get('/api/station/workers/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_deputy_cannot_manage_deputies(self):
+        auth(self.client, self.deputy)
+        res = self.client.get('/api/station/deputies/')
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    # Station manager deputy management
+    def test_manager_can_list_deputies(self):
+        auth(self.client, self.manager)
+        res = self.client.get('/api/station/deputies/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        ids = [d['id'] for d in res.data]
+        self.assertIn(self.deputy.id, ids)
+
+    def test_manager_can_promote_worker_to_deputy(self):
+        auth(self.client, self.manager)
+        res = self.client.post('/api/station/deputies/', {'worker_id': self.worker.id})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.worker.refresh_from_db()
+        self.assertEqual(self.worker.role, User.Role.DEPUTY)
+        self.assertIsNone(self.worker.station)
+        self.assertIn(self.worker, self.station.deputies.all())
+
+    def test_manager_can_create_new_deputy(self):
+        auth(self.client, self.manager)
+        res = self.client.post('/api/station/deputies/', {'username': 'new_dep', 'password': 'pass1234'})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        deputy = User.objects.get(username='new_dep')
+        self.assertEqual(deputy.role, User.Role.DEPUTY)
+        self.assertIn(deputy, self.station.deputies.all())
+
+    def test_manager_cannot_promote_worker_from_other_station(self):
+        other_station = Station.objects.create(name='AZS-99', company=self.company)
+        other_worker = make_user('other_w4', User.Role.WORKER, station=other_station)
+        auth(self.client, self.manager)
+        res = self.client.post('/api/station/deputies/', {'worker_id': other_worker.id})
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_manager_can_remove_deputy(self):
+        auth(self.client, self.manager)
+        res = self.client.delete(f'/api/station/deputies/{self.deputy.id}/')
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.deputy.refresh_from_db()
+        self.assertFalse(self.deputy.is_active)
+
+
 # ── IT Manager ────────────────────────────────────────────────────────────────
 
 class ITManagerTests(BaseSetup):

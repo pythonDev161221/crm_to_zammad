@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from tasks.models import Ticket, Task, Comment
 from users.models import User
 from zammad_bridge.client import push_to_zammad
-from .permissions import IsITWorker, IsITOrSupplyWorker, IsITManager, IsStationManager, IsWorker, IsWorkerOrStationManager
+from .permissions import IsITWorker, IsITOrSupplyWorker, IsITManager, IsStationManager, IsStationManagerOrDeputy, IsWorker, IsWorkerOrStationManager
 from .serializers import (
     TicketSerializer, TicketCreateSerializer,
     TaskSerializer, CommentSerializer, UserSerializer,
@@ -37,7 +37,7 @@ class TicketListCreateView(generics.ListCreateAPIView):
         qs = Ticket.objects.exclude(status=Ticket.Status.RESOLVED)
         if user.role == User.Role.WORKER:
             return qs.filter(created_by=user)
-        if user.role == User.Role.STATION_MANAGER:
+        if user.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
             from django.db.models import Q
             from users.models import Station
             station_ids = Station.objects.filter(
@@ -63,7 +63,7 @@ class TicketListCreateView(generics.ListCreateAPIView):
 
         user = self.request.user
 
-        if user.role == User.Role.STATION_MANAGER:
+        if user.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
             stations = list(Station.objects.filter(Q(manager=user) | Q(deputies=user)).distinct())
             if len(stations) == 1:
                 station = stations[0]
@@ -91,7 +91,7 @@ class TicketDetailView(generics.RetrieveAPIView):
         qs = Ticket.objects.exclude(status=Ticket.Status.RESOLVED)
         if user.role == User.Role.WORKER:
             return qs.filter(created_by=user)
-        if user.role == User.Role.STATION_MANAGER:
+        if user.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
             from django.db.models import Q
             from users.models import Station
             station_ids = Station.objects.filter(
@@ -181,7 +181,7 @@ class CommentCreateView(generics.CreateAPIView):
         user = self.request.user
         is_internal = serializer.validated_data.get('is_internal', False)
 
-        if user.role == User.Role.STATION_MANAGER:
+        if user.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('Station managers cannot post comments.')
 
@@ -220,7 +220,7 @@ class ITWorkerListView(APIView):
 
 
 class StationWorkersView(APIView):
-    permission_classes = [IsAuthenticated, IsStationManager]
+    permission_classes = [IsAuthenticated, IsStationManagerOrDeputy]
 
     def _get_stations(self, user):
         from users.models import Station
@@ -271,7 +271,7 @@ class StationWorkersView(APIView):
 
 
 class StationWorkerDeleteView(APIView):
-    permission_classes = [IsAuthenticated, IsStationManager]
+    permission_classes = [IsAuthenticated, IsStationManagerOrDeputy]
 
     def _get_stations(self, user):
         from users.models import Station
@@ -478,8 +478,88 @@ class ManageCompanyStationsView(APIView):
         return Response([{'id': s.id, 'name': s.name} for s in stations])
 
 
-class MyStationsView(APIView):
+class StationDeputiesView(APIView):
+    permission_classes = [IsAuthenticated, IsStationManager]  # primary manager only
+
+    def _primary_stations(self, user):
+        from users.models import Station
+        return list(Station.objects.filter(manager=user))
+
+    def get(self, request):
+        stations = self._primary_stations(request.user)
+        if not stations:
+            return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
+        station_ids = [s.id for s in stations]
+        deputies = User.objects.filter(role=User.Role.DEPUTY, deputy_stations__id__in=station_ids).distinct()
+        return Response([{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active} for u in deputies])
+
+    def post(self, request):
+        stations = self._primary_stations(request.user)
+        if not stations:
+            return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
+        if len(stations) == 1:
+            station = stations[0]
+        else:
+            station_id = request.data.get('station_id')
+            if not station_id:
+                return Response({'station_id': 'Please provide station_id.'}, status=status.HTTP_400_BAD_REQUEST)
+            station = next((s for s in stations if s.id == int(station_id)), None)
+            if not station:
+                return Response({'detail': 'Station not found or not yours.'}, status=status.HTTP_403_FORBIDDEN)
+
+        worker_id = request.data.get('worker_id')
+        if worker_id:
+            # Promote existing worker from this station
+            try:
+                worker = User.objects.get(pk=worker_id, role=User.Role.WORKER, station=station)
+            except User.DoesNotExist:
+                return Response({'detail': 'Worker not found in this station.'}, status=status.HTTP_404_NOT_FOUND)
+            worker.role = User.Role.DEPUTY
+            worker.station = None
+            worker.save(update_fields=['role', 'station'])
+            station.deputies.add(worker)
+            return Response({'id': worker.id, 'username': worker.username, 'name': worker.get_full_name() or worker.username}, status=status.HTTP_201_CREATED)
+        else:
+            # Create new deputy
+            username = request.data.get('username', '').strip()
+            password = request.data.get('password', '').strip()
+            if not username or not password:
+                return Response({'detail': 'Username and password required.'}, status=status.HTTP_400_BAD_REQUEST)
+            if User.objects.filter(username=username).exists():
+                return Response({'detail': 'Username already taken.'}, status=status.HTTP_400_BAD_REQUEST)
+            deputy = User.objects.create_user(
+                username=username,
+                password=password,
+                first_name=request.data.get('first_name', '').strip(),
+                last_name=request.data.get('last_name', '').strip(),
+                role=User.Role.DEPUTY,
+            )
+            station.deputies.add(deputy)
+            return Response({'id': deputy.id, 'username': deputy.username, 'name': deputy.get_full_name() or deputy.username}, status=status.HTTP_201_CREATED)
+
+
+class StationDeputyDeleteView(APIView):
     permission_classes = [IsAuthenticated, IsStationManager]
+
+    def delete(self, request, pk):
+        from users.models import Station
+        stations = list(Station.objects.filter(manager=request.user))
+        if not stations:
+            return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
+        station_ids = [s.id for s in stations]
+        try:
+            deputy = User.objects.get(pk=pk, role=User.Role.DEPUTY, deputy_stations__id__in=station_ids)
+        except User.DoesNotExist:
+            return Response({'detail': 'Deputy not found in your stations.'}, status=status.HTTP_404_NOT_FOUND)
+        for station in stations:
+            station.deputies.remove(deputy)
+        deputy.is_active = False
+        deputy.save(update_fields=['is_active'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class MyStationsView(APIView):
+    permission_classes = [IsAuthenticated, IsStationManagerOrDeputy]
 
     def get(self, request):
         from users.models import Station

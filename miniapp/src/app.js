@@ -79,10 +79,10 @@ function renderTicketList(tickets) {
   const role = currentUser.role;
 
   const fab = document.getElementById('fab-new-ticket');
-  fab.style.display = (role === 'worker' || role === 'station_manager') ? 'flex' : 'none';
+  fab.style.display = (role === 'worker' || role === 'station_manager' || role === 'deputy') ? 'flex' : 'none';
 
   const btnStation = document.getElementById('btn-station');
-  btnStation.style.display = role === 'station_manager' ? 'inline' : 'none';
+  btnStation.style.display = (role === 'station_manager' || role === 'deputy') ? 'inline' : 'none';
 
   const btnManage = document.getElementById('btn-manage');
   btnManage.style.display = role === 'it_manager' ? 'inline' : 'none';
@@ -127,7 +127,7 @@ function renderTicketDetail(ticket) {
   const role = currentUser.role;
   const isITWorker = role === 'it_worker' || role === 'it_manager' || role === 'admin';
   const isSupplyWorker = role === 'supply_worker';
-  const isManager = role === 'station_manager';
+  const isManager = role === 'station_manager' || role === 'deputy';
   const canComment = !isManager;
   const myTask = ticket.tasks?.find(t => t.assigned_to === currentUser.id);
 
@@ -462,6 +462,8 @@ function showError(msg) {
 
 window.showStationWorkers = async function() {
   showScreen('screen-station-workers');
+  const btnDeputies = document.getElementById('btn-deputies');
+  if (btnDeputies) btnDeputies.style.display = currentUser.role === 'station_manager' ? 'inline' : 'none';
   const list = document.getElementById('station-workers-list');
   list.innerHTML = '<div class="loading">Loading...</div>';
 
@@ -672,6 +674,104 @@ window.submitAddStaff = async function() {
     tgAlert(`Account created for ${first_name || username}.`);
     showScreen('screen-manage-staff');
     await showManageSection(currentManageType);
+  } catch (e) {
+    tgAlert(e.message);
+  }
+};
+
+// ── Station Deputies ──────────────────────────────────────────────────────────
+
+window.showStationDeputies = async function() {
+  showScreen('screen-station-deputies');
+  const list = document.getElementById('station-deputies-list');
+  list.innerHTML = '<div class="loading">Loading...</div>';
+
+  try {
+    const deputies = await api.getStationDeputies();
+    if (!deputies.length) {
+      list.innerHTML = '<div class="empty">No deputies yet.</div>';
+      return;
+    }
+    list.innerHTML = deputies.map(d => `
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="card-title">${escHtml(d.name)}</div>
+          <div class="card-meta">@${escHtml(d.username)} · ${d.is_active ? 'Active' : '<span style="color:#dc3545">Deactivated</span>'}</div>
+        </div>
+        ${d.is_active ? `<button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeDeputy(${d.id}, '${escHtml(d.name)}')">Remove</button>` : ''}
+      </div>
+    `).join('');
+  } catch (e) {
+    list.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+};
+
+window.removeDeputy = async function(id, name) {
+  const confirmed = await tgConfirm(`Remove deputy ${name}? They will become a regular worker.`);
+  if (!confirmed) return;
+  try {
+    await api.removeStationDeputy(id);
+    await showStationDeputies();
+  } catch (e) {
+    tgAlert(e.message);
+  }
+};
+
+window.showAddDeputy = async function() {
+  document.getElementById('deputy-type').value = 'promote';
+  document.getElementById('deputy-promote-section').style.display = '';
+  document.getElementById('deputy-new-section').style.display = 'none';
+  document.getElementById('deputy-notes') && (document.getElementById('deputy-notes').value = '');
+
+  // populate worker select
+  try {
+    const workers = await api.getStationWorkers();
+    const active = workers.filter(w => w.is_active);
+    const select = document.getElementById('deputy-worker-select');
+    if (!active.length) {
+      tgAlert('No active workers to promote.');
+      return;
+    }
+    select.innerHTML = active.map(w => `<option value="${w.id}">${escHtml(w.name)} (@${escHtml(w.username)})</option>`).join('');
+  } catch (e) {
+    tgAlert('Could not load workers: ' + e.message);
+    return;
+  }
+
+  showScreen('screen-add-deputy');
+};
+
+window.toggleDeputyType = function(value) {
+  document.getElementById('deputy-promote-section').style.display = value === 'promote' ? '' : 'none';
+  document.getElementById('deputy-new-section').style.display = value === 'new' ? '' : 'none';
+};
+
+window.submitPromoteDeputy = async function() {
+  const workerId = document.getElementById('deputy-worker-select').value;
+  if (!workerId) { tgAlert('Please select a worker.'); return; }
+  try {
+    await api.addStationDeputy({ worker_id: parseInt(workerId) });
+    tgAlert('Worker promoted to deputy.');
+    showScreen('screen-station-deputies');
+    await showStationDeputies();
+  } catch (e) {
+    tgAlert(e.message);
+  }
+};
+
+window.submitCreateDeputy = async function() {
+  const username = document.getElementById('deputy-username').value.trim();
+  const password = document.getElementById('deputy-password').value.trim();
+  const first_name = document.getElementById('deputy-first').value.trim();
+  const last_name = document.getElementById('deputy-last').value.trim();
+
+  if (!username || !password) { tgAlert('Username and password are required.'); return; }
+
+  try {
+    await api.addStationDeputy({ username, password, first_name, last_name });
+    tgAlert(`Deputy account created for ${first_name || username}.`);
+    showScreen('screen-station-deputies');
+    await showStationDeputies();
   } catch (e) {
     tgAlert(e.message);
   }
