@@ -54,6 +54,24 @@ export const api = {
 
   // Station manager: list their own stations
   getMyStations: () => request('GET', '/my-stations/'),
+
+  // IT Manager: list their own companies
+  getMyCompanies: () => request('GET', '/my-companies/'),
+
+  // IT Manager: manage staff
+  getManageITWorkers: () => request('GET', '/manage/it-workers/'),
+  addManageITWorker: (data) => request('POST', '/manage/it-workers/', data),
+  removeManageITWorker: (id) => request('DELETE', `/manage/it-workers/${id}/`),
+
+  getManageSupplyWorkers: () => request('GET', '/manage/supply-workers/'),
+  addManageSupplyWorker: (data) => request('POST', '/manage/supply-workers/', data),
+  removeManageSupplyWorker: (id) => request('DELETE', `/manage/supply-workers/${id}/`),
+
+  getManageStationManagers: () => request('GET', '/manage/station-managers/'),
+  addManageStationManager: (data) => request('POST', '/manage/station-managers/', data),
+  removeManageStationManager: (id) => request('DELETE', `/manage/station-managers/${id}/`),
+
+  getManageStations: () => request('GET', '/manage/stations/'),
   resolveTicket: (id) => request('POST', `/tickets/${id}/resolve/`),
 
   // Tasks (assigned to IT workers within a ticket)

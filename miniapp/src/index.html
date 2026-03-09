@@ -20,6 +20,7 @@
     <div class="header">
       <h1>My Tickets</h1>
       <button id="btn-station" class="back-btn" onclick="showStationWorkers()" style="display:none">AZS &#9881;</button>
+      <button id="btn-manage" class="back-btn" onclick="showScreen('screen-manage')" style="display:none">Staff &#9881;</button>
       <button class="back-btn" onclick="showScreen('screen-change-password')" title="Change password">&#128273;</button>
     </div>
     <div id="tickets-list" class="card-list"></div>
@@ -120,6 +121,70 @@
         <input id="new-worker-password" type="password" placeholder="min 6 characters">
       </div>
       <button class="btn btn-primary" onclick="submitAddWorker()">Create Account</button>
+    </div>
+  </div>
+
+  <!-- IT Manager: Staff Management Hub -->
+  <div id="screen-manage" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <h1>Manage Staff</h1>
+    </div>
+    <div class="card-list">
+      <div class="card" onclick="showManageSection('it_worker')">
+        <div class="card-title">IT Workers</div>
+      </div>
+      <div class="card" onclick="showManageSection('supply_worker')">
+        <div class="card-title">Supply Workers</div>
+      </div>
+      <div class="card" onclick="showManageSection('station_manager')">
+        <div class="card-title">Station Managers</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Staff List -->
+  <div id="screen-manage-staff" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('screen-manage')">&#8592; Back</button>
+      <h1 id="manage-staff-title">Staff</h1>
+    </div>
+    <div id="manage-staff-list" class="card-list"></div>
+    <button class="fab" onclick="showAddStaff()">+</button>
+  </div>
+
+  <!-- Add Staff Form -->
+  <div id="screen-add-staff" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('screen-manage-staff')">&#8592; Back</button>
+      <h1 id="add-staff-title">Add Staff</h1>
+    </div>
+    <div class="form">
+      <div class="field" id="add-staff-station-field" style="display:none">
+        <label>Station *</label>
+        <select id="add-staff-station"></select>
+      </div>
+      <div class="field" id="add-staff-company-field" style="display:none">
+        <label>Company *</label>
+        <select id="add-staff-company"></select>
+      </div>
+      <div class="field">
+        <label>First Name</label>
+        <input id="add-staff-first" type="text" placeholder="Ivan">
+      </div>
+      <div class="field">
+        <label>Last Name</label>
+        <input id="add-staff-last" type="text" placeholder="Petrov">
+      </div>
+      <div class="field">
+        <label>Username *</label>
+        <input id="add-staff-username" type="text" placeholder="ivan_petrov">
+      </div>
+      <div class="field">
+        <label>Temporary Password *</label>
+        <input id="add-staff-password" type="password" placeholder="min 6 characters">
+      </div>
+      <button class="btn btn-primary" onclick="submitAddStaff()">Create Account</button>
     </div>
   </div>
 

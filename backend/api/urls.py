@@ -26,6 +26,18 @@ urlpatterns = [
     # Station manager: their own stations
     path('my-stations/', views.MyStationsView.as_view(), name='my-stations'),
 
+    # IT Manager: their own companies
+    path('my-companies/', views.MyCompaniesView.as_view(), name='my-companies'),
+
+    # IT Manager: manage company staff
+    path('manage/it-workers/', views.ManageITWorkersView.as_view(), name='manage-it-workers'),
+    path('manage/it-workers/<int:pk>/', views.ManageITWorkerDeleteView.as_view(), name='manage-it-worker-delete'),
+    path('manage/supply-workers/', views.ManageSupplyWorkersView.as_view(), name='manage-supply-workers'),
+    path('manage/supply-workers/<int:pk>/', views.ManageSupplyWorkerDeleteView.as_view(), name='manage-supply-worker-delete'),
+    path('manage/station-managers/', views.ManageStationManagersView.as_view(), name='manage-station-managers'),
+    path('manage/station-managers/<int:pk>/', views.ManageStationManagerDeleteView.as_view(), name='manage-station-manager-delete'),
+    path('manage/stations/', views.ManageCompanyStationsView.as_view(), name='manage-stations'),
+
     # Change password
     path('auth/change-password/', views.ChangePasswordView.as_view(), name='change-password'),
 ]

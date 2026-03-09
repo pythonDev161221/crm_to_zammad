@@ -541,6 +541,112 @@ class SupplyWorkerTests(BaseSetup):
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
 
+# ── IT Manager ────────────────────────────────────────────────────────────────
+
+class ITManagerTests(BaseSetup):
+    def setUp(self):
+        super().setUp()
+        self.it_manager = make_user('itman', User.Role.IT_MANAGER, companies=[self.company])
+
+    # Works like IT worker
+    def test_it_manager_sees_tickets_from_company(self):
+        ticket = self.make_ticket(self.worker)
+        auth(self.client, self.it_manager)
+        res = self.client.get('/api/tickets/')
+        self.assertIn(ticket.id, [t['id'] for t in res.data])
+
+    def test_it_manager_can_take_ticket(self):
+        ticket = self.make_ticket()
+        auth(self.client, self.it_manager)
+        res = self.client.post(f'/api/tickets/{ticket.id}/tasks/', {'assigned_to': self.it_manager.id, 'status': 'open'})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+    def test_it_manager_appears_in_delegation_list(self):
+        ticket = self.make_ticket()
+        auth(self.client, self.it1)
+        res = self.client.get(f'/api/it-workers/?ticket_id={ticket.id}')
+        ids = [w['id'] for w in res.data]
+        self.assertIn(self.it_manager.id, ids)
+
+    # Manage IT workers
+    def test_it_manager_can_list_it_workers(self):
+        auth(self.client, self.it_manager)
+        res = self.client.get('/api/manage/it-workers/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        ids = [w['id'] for w in res.data]
+        self.assertIn(self.it1.id, ids)
+
+    def test_it_manager_can_add_it_worker(self):
+        auth(self.client, self.it_manager)
+        res = self.client.post('/api/manage/it-workers/', {'username': 'new_it', 'password': 'pass1234', 'first_name': 'New', 'last_name': 'IT'})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        worker = User.objects.get(username='new_it')
+        self.assertEqual(worker.role, User.Role.IT_WORKER)
+        self.assertIn(self.company, worker.companies.all())
+
+    def test_it_manager_can_deactivate_it_worker(self):
+        auth(self.client, self.it_manager)
+        res = self.client.delete(f'/api/manage/it-workers/{self.it1.id}/')
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.it1.refresh_from_db()
+        self.assertFalse(self.it1.is_active)
+
+    def test_it_manager_cannot_manage_it_worker_from_other_company(self):
+        company2 = Company.objects.create(name='BP')
+        other_it = make_user('other_it', User.Role.IT_WORKER, companies=[company2])
+        auth(self.client, self.it_manager)
+        res = self.client.delete(f'/api/manage/it-workers/{other_it.id}/')
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+    # Manage supply workers
+    def test_it_manager_can_add_supply_worker(self):
+        auth(self.client, self.it_manager)
+        res = self.client.post('/api/manage/supply-workers/', {'username': 'new_supply', 'password': 'pass1234'})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        worker = User.objects.get(username='new_supply')
+        self.assertEqual(worker.role, User.Role.SUPPLY_WORKER)
+        self.assertIn(self.company, worker.companies.all())
+
+    def test_it_manager_can_deactivate_supply_worker(self):
+        supply = make_user('supply_x', User.Role.SUPPLY_WORKER, companies=[self.company])
+        auth(self.client, self.it_manager)
+        res = self.client.delete(f'/api/manage/supply-workers/{supply.id}/')
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        supply.refresh_from_db()
+        self.assertFalse(supply.is_active)
+
+    # Manage station managers
+    def test_it_manager_can_add_station_manager(self):
+        auth(self.client, self.it_manager)
+        res = self.client.post('/api/manage/station-managers/', {
+            'username': 'new_mgr', 'password': 'pass1234', 'station_id': self.station.id
+        })
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        mgr = User.objects.get(username='new_mgr')
+        self.assertEqual(mgr.role, User.Role.STATION_MANAGER)
+
+    def test_it_manager_cannot_add_station_manager_to_other_company_station(self):
+        company2 = Company.objects.create(name='BP')
+        other_station = Station.objects.create(name='AZS-BP', company=company2)
+        auth(self.client, self.it_manager)
+        res = self.client.post('/api/manage/station-managers/', {
+            'username': 'new_mgr2', 'password': 'pass1234', 'station_id': other_station.id
+        })
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_it_manager_can_deactivate_station_manager(self):
+        auth(self.client, self.it_manager)
+        res = self.client.delete(f'/api/manage/station-managers/{self.manager.id}/')
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.manager.refresh_from_db()
+        self.assertFalse(self.manager.is_active)
+
+    def test_it_worker_cannot_access_management_endpoints(self):
+        auth(self.client, self.it1)
+        res = self.client.get('/api/manage/it-workers/')
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+
 # ── Change Password ───────────────────────────────────────────────────────────
 
 class ChangePasswordTests(BaseSetup):

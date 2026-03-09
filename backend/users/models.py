@@ -6,6 +6,7 @@ class User(AbstractUser):
     class Role(models.TextChoices):
         ADMIN = 'admin', 'Admin'
         STATION_MANAGER = 'station_manager', 'Station Manager'
+        IT_MANAGER = 'it_manager', 'IT Manager'
         IT_WORKER = 'it_worker', 'IT Worker'
         SUPPLY_WORKER = 'supply_worker', 'Supply Worker'
         WORKER = 'worker', 'Worker'
