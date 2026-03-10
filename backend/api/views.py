@@ -181,9 +181,19 @@ class CommentCreateView(generics.CreateAPIView):
         user = self.request.user
         is_internal = serializer.validated_data.get('is_internal', False)
 
-        if user.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
+        if user.role == User.Role.DEPUTY:
             from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied('Station managers cannot post comments.')
+            raise PermissionDenied('Deputies cannot post comments.')
+
+        if user.role == User.Role.STATION_MANAGER:
+            from rest_framework.exceptions import PermissionDenied
+            if ticket.status == Ticket.Status.RESOLVED:
+                raise PermissionDenied('Cannot comment on resolved tickets.')
+            if not ticket.created_by.station_id or \
+               ticket.created_by.station_id not in user.managed_stations.values_list('id', flat=True):
+                raise PermissionDenied('You can only comment on tickets from your station.')
+            if is_internal:
+                raise PermissionDenied('Station managers cannot post internal comments.')
 
         if is_internal and user.role in (User.Role.WORKER, User.Role.SUPPLY_WORKER):
             from rest_framework.exceptions import PermissionDenied

@@ -346,8 +346,32 @@ class CommentTests(BaseSetup):
         self.assertNotIn('private', texts)
         self.assertIn('public', texts)
 
-    def test_manager_cannot_post_comment(self):
+    def test_manager_can_post_public_comment_on_own_station_ticket(self):
         ticket = self.make_ticket(self.worker)
+        auth(self.client, self.manager)
+        res = self.client.post(f'/api/tickets/{ticket.id}/comments/', {'text': 'hello'})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+    def test_manager_cannot_post_internal_comment(self):
+        ticket = self.make_ticket(self.worker)
+        auth(self.client, self.manager)
+        res = self.client.post(f'/api/tickets/{ticket.id}/comments/', {
+            'text': 'secret', 'is_internal': True
+        })
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_manager_cannot_post_comment_on_other_station_ticket(self):
+        other_station = Station.objects.create(name='AZS-99', company=self.company)
+        other_worker = make_user('other_w_mgr', User.Role.WORKER, station=other_station)
+        ticket = self.make_ticket(other_worker)
+        auth(self.client, self.manager)
+        res = self.client.post(f'/api/tickets/{ticket.id}/comments/', {'text': 'hello'})
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_manager_cannot_post_comment_on_resolved_ticket(self):
+        ticket = self.make_ticket(self.worker)
+        ticket.status = Ticket.Status.RESOLVED
+        ticket.save()
         auth(self.client, self.manager)
         res = self.client.post(f'/api/tickets/{ticket.id}/comments/', {'text': 'hello'})
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
