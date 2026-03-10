@@ -83,6 +83,7 @@ ZAMMAD_URL = config('ZAMMAD_URL', default='')
 ZAMMAD_TOKEN = config('ZAMMAD_TOKEN', default='')
 
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
+TELEGRAM_BOT_USERNAME = config('TELEGRAM_BOT_USERNAME', default='')
 
 
 # Password validation

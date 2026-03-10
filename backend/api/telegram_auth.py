@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from users.models import User
+from users.models import User, StationInvite
 
 
 def verify_telegram_init_data(init_data: str) -> dict | None:
@@ -110,3 +110,56 @@ class LinkAccountView(APIView):
                 'name': user.get_full_name() or user.username,
             }
         })
+
+
+class RegisterView(APIView):
+    permission_classes = []  # public endpoint
+
+    def post(self, request):
+        init_data = request.data.get('initData', '')
+        token = request.data.get('token', '').strip()
+        first_name = request.data.get('first_name', '').strip()
+        last_name = request.data.get('last_name', '').strip()
+
+        user_data = verify_telegram_init_data(init_data)
+        if not user_data:
+            return Response({'detail': 'Invalid Telegram data.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        telegram_id = user_data['id']
+
+        if User.objects.filter(telegram_id=telegram_id).exists():
+            return Response({'detail': 'This Telegram account is already registered.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            invite = StationInvite.objects.select_related('station').get(token=token, is_active=True)
+        except StationInvite.DoesNotExist:
+            return Response({'detail': 'Invalid or expired invite link.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        tg_username = user_data.get('username', '')
+        base_username = tg_username or f'user_{telegram_id}'
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f'{base_username}_{counter}'
+            counter += 1
+
+        worker = User.objects.create_user(
+            username=username,
+            password=None,
+            first_name=first_name or user_data.get('first_name', ''),
+            last_name=last_name or user_data.get('last_name', ''),
+            role=User.Role.WORKER,
+            station=invite.station,
+            telegram_id=telegram_id,
+        )
+
+        refresh = RefreshToken.for_user(worker)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': {
+                'id': worker.id,
+                'role': worker.role,
+                'name': worker.get_full_name() or worker.username,
+            }
+        }, status=status.HTTP_201_CREATED)

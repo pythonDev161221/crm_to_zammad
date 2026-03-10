@@ -40,6 +40,9 @@ export const api = {
   linkAccount: (initData, username, password) =>
     request('POST', '/auth/link/', { initData, username, password }),
 
+  registerWithInvite: (initData, token, first_name, last_name) =>
+    request('POST', '/auth/register/', { initData, token, first_name, last_name }),
+
   // Me
   getMe: () => request('GET', '/me/'),
 
@@ -102,6 +105,11 @@ export const api = {
   getStationDeputies: () => request('GET', '/station/deputies/'),
   addStationDeputy: (data) => request('POST', '/station/deputies/', data),
   removeStationDeputy: (id) => request('DELETE', `/station/deputies/${id}/`),
+
+  // Invite link (station manager only)
+  getStationInvite: (stationId) => request('GET', `/station/invite/${stationId ? `?station_id=${stationId}` : ''}`),
+  generateStationInvite: (stationId) => request('POST', '/station/invite/', stationId ? { station_id: stationId } : {}),
+  deleteStationInvite: (stationId) => request('DELETE', `/station/invite/${stationId ? `?station_id=${stationId}` : ''}`),
 
   // Password change
   changePassword: (old_password, new_password) =>

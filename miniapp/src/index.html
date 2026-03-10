@@ -15,7 +15,29 @@
     <div class="loading">Connecting...</div>
   </div>
 
-  <!-- Link Account -->
+  <!-- Register via invite link -->
+  <div id="screen-register" class="screen">
+    <div class="header">
+      <h1>Join Station</h1>
+    </div>
+    <div class="form">
+      <p style="color:var(--text-secondary);margin-bottom:16px;font-size:14px">
+        You were invited to join a station. Enter your name to create your account.
+      </p>
+      <input type="hidden" id="register-token">
+      <div class="field">
+        <label>First Name *</label>
+        <input id="register-first" type="text" placeholder="Ivan" autocomplete="given-name">
+      </div>
+      <div class="field">
+        <label>Last Name</label>
+        <input id="register-last" type="text" placeholder="Petrov" autocomplete="family-name">
+      </div>
+      <button class="btn btn-primary" onclick="submitRegister()">Create Account</button>
+    </div>
+  </div>
+
+  <!-- Link Account (fallback for existing accounts) -->
   <div id="screen-link-account" class="screen">
     <div class="header">
       <h1>Activate Account</h1>
@@ -113,10 +135,39 @@
     <div class="header">
       <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
       <h1 id="station-name">My Station</h1>
+      <button id="btn-invite" class="back-btn" onclick="showInviteLink()" style="display:none">Invite</button>
       <button id="btn-deputies" class="back-btn" onclick="showStationDeputies()" style="display:none">Deputies</button>
     </div>
     <div id="station-workers-list" class="card-list"></div>
-    <button class="fab" onclick="showScreen('screen-add-worker')">+</button>
+  </div>
+
+  <!-- Invite Link (station manager only) -->
+  <div id="screen-station-invite" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showStationWorkers()">&#8592; Back</button>
+      <h1>Invite Link</h1>
+    </div>
+    <div class="form">
+      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px">
+        Share this link with your workers. Anyone with this link can join your station.
+      </p>
+      <div id="invite-station-field" class="field" style="display:none">
+        <label>Station</label>
+        <select id="invite-station-select"></select>
+      </div>
+      <div id="invite-link-box" style="display:none">
+        <div class="field">
+          <label>Current Link</label>
+          <div id="invite-link-text" style="word-break:break-all;padding:10px;background:var(--secondary-bg);border-radius:8px;font-size:13px;margin-bottom:8px"></div>
+        </div>
+        <button class="btn btn-primary" onclick="copyInviteLink()">Copy Link</button>
+        <button class="btn btn-danger" style="margin-top:8px" onclick="deactivateInviteLink()">Deactivate Link</button>
+      </div>
+      <div id="invite-no-link" style="display:none">
+        <p style="color:var(--hint);font-size:14px;margin-bottom:12px">No active invite link.</p>
+      </div>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="generateInviteLink()">Generate New Link</button>
+    </div>
   </div>
 
   <!-- Station Deputies (manager only) -->
@@ -129,46 +180,21 @@
     <button class="fab" onclick="showAddDeputy()">+</button>
   </div>
 
-  <!-- Add Deputy -->
+  <!-- Add Deputy (promote existing worker) -->
   <div id="screen-add-deputy" class="screen">
     <div class="header">
       <button class="back-btn" onclick="showScreen('screen-station-deputies')">&#8592; Back</button>
-      <h1>Add Deputy</h1>
+      <h1>Promote to Deputy</h1>
     </div>
     <div class="form">
+      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px">
+        Select a worker from your station to promote to deputy.
+      </p>
       <div class="field">
-        <label>How</label>
-        <select id="deputy-type" onchange="toggleDeputyType(this.value)">
-          <option value="promote">Promote existing worker</option>
-          <option value="new">Create new account</option>
-        </select>
+        <label>Select Worker</label>
+        <select id="deputy-worker-select"></select>
       </div>
-      <div id="deputy-promote-section">
-        <div class="field">
-          <label>Select Worker</label>
-          <select id="deputy-worker-select"></select>
-        </div>
-        <button class="btn btn-primary" onclick="submitPromoteDeputy()">Promote to Deputy</button>
-      </div>
-      <div id="deputy-new-section" style="display:none">
-        <div class="field">
-          <label>First Name</label>
-          <input id="deputy-first" type="text" placeholder="Ivan">
-        </div>
-        <div class="field">
-          <label>Last Name</label>
-          <input id="deputy-last" type="text" placeholder="Petrov">
-        </div>
-        <div class="field">
-          <label>Username *</label>
-          <input id="deputy-username" type="text" placeholder="ivan_petrov">
-        </div>
-        <div class="field">
-          <label>Password *</label>
-          <input id="deputy-password" type="password" placeholder="min 6 characters">
-        </div>
-        <button class="btn btn-primary" onclick="submitCreateDeputy()">Create Deputy</button>
-      </div>
+      <button class="btn btn-primary" onclick="submitPromoteDeputy()">Promote to Deputy</button>
     </div>
   </div>
 

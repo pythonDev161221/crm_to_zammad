@@ -20,6 +20,7 @@ urlpatterns = [
     path('it-workers/', views.ITWorkerListView.as_view(), name='it-workers'),
 
     # Station management
+    path('station/invite/', views.StationInviteView.as_view(), name='station-invite'),
     path('station/workers/', views.StationWorkersView.as_view(), name='station-workers'),
     path('station/workers/<int:pk>/', views.StationWorkerDeleteView.as_view(), name='station-worker-delete'),
     path('station/deputies/', views.StationDeputiesView.as_view(), name='station-deputies'),

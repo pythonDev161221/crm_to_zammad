@@ -19,12 +19,13 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import TemplateView
 from rest_framework_simplejwt.views import TokenRefreshView
-from api.telegram_auth import TelegramAuthView, LinkAccountView
+from api.telegram_auth import TelegramAuthView, LinkAccountView, RegisterView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/telegram/', TelegramAuthView.as_view(), name='telegram-auth'),
     path('api/auth/link/', LinkAccountView.as_view(), name='link-account'),
+    path('api/auth/register/', RegisterView.as_view(), name='register'),
     path('api/auth/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('api/', include('api.urls')),
     path('', TemplateView.as_view(template_name='index.html'), name='miniapp'),

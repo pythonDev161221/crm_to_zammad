@@ -1,3 +1,5 @@
+import secrets
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -51,3 +53,23 @@ class Station(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class StationInvite(models.Model):
+    token = models.CharField(max_length=64, unique=True)
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, related_name='invites')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_invites')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @classmethod
+    def create_for_station(cls, station, created_by):
+        cls.objects.filter(station=station, is_active=True).update(is_active=False)
+        return cls.objects.create(
+            token=secrets.token_urlsafe(32),
+            station=station,
+            created_by=created_by,
+        )
+
+    def __str__(self):
+        return f'Invite for {self.station} (active={self.is_active})'

@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from tasks.models import Ticket, Task, Comment
-from users.models import User
+from users.models import User, StationInvite
 from zammad_bridge.client import push_to_zammad
 from .permissions import IsITWorker, IsITOrSupplyWorker, IsITManager, IsStationManager, IsStationManagerOrDeputy, IsWorker, IsWorkerOrStationManager
 from .serializers import (
@@ -565,6 +565,49 @@ class StationDeputyDeleteView(APIView):
             station.deputies.remove(deputy)
         deputy.is_active = False
         deputy.save(update_fields=['is_active'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class StationInviteView(APIView):
+    permission_classes = [IsAuthenticated, IsStationManager]
+
+    def _get_station(self, user, station_id=None):
+        from users.models import Station
+        stations = list(Station.objects.filter(manager=user))
+        if not stations:
+            return None
+        if station_id:
+            return next((s for s in stations if s.id == int(station_id)), None)
+        return stations[0]
+
+    def _build_link(self, token):
+        from django.conf import settings
+        bot = settings.TELEGRAM_BOT_USERNAME
+        if bot:
+            return f'https://t.me/{bot}?startapp=inv_{token}'
+        return None
+
+    def get(self, request):
+        station = self._get_station(request.user, request.query_params.get('station_id'))
+        if not station:
+            return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
+        invite = StationInvite.objects.filter(station=station, is_active=True).first()
+        if not invite:
+            return Response({'token': None, 'link': None})
+        return Response({'token': invite.token, 'link': self._build_link(invite.token)})
+
+    def post(self, request):
+        station = self._get_station(request.user, request.data.get('station_id'))
+        if not station:
+            return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
+        invite = StationInvite.create_for_station(station, request.user)
+        return Response({'token': invite.token, 'link': self._build_link(invite.token)}, status=status.HTTP_201_CREATED)
+
+    def delete(self, request):
+        station = self._get_station(request.user, request.query_params.get('station_id'))
+        if not station:
+            return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
+        StationInvite.objects.filter(station=station, is_active=True).update(is_active=False)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

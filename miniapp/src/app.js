@@ -47,6 +47,29 @@ async function init() {
       window.location.href = '/dev/';
       return;
     }
+
+    // Check for invite link (startapp=inv_TOKEN)
+    const startParam = tg?.initDataUnsafe?.start_param || '';
+    if (startParam.startsWith('inv_')) {
+      const inviteToken = startParam.slice(4);
+      // Check if already registered
+      const auth = await api.telegramAuth(initData);
+      if (!auth.needs_linking) {
+        // Already has an account — log them in normally
+        setToken(auth.access);
+        currentUser = auth.user;
+        await loadTickets();
+        return;
+      }
+      // New user — show registration screen
+      document.getElementById('register-token').value = inviteToken;
+      const tgUser = tg?.initDataUnsafe?.user || {};
+      document.getElementById('register-first').value = tgUser.first_name || '';
+      document.getElementById('register-last').value = tgUser.last_name || '';
+      showScreen('screen-register');
+      return;
+    }
+
     const auth = await api.telegramAuth(initData);
     if (auth.needs_linking) {
       showScreen('screen-link-account');
@@ -62,6 +85,24 @@ async function init() {
     showError('Auth failed: ' + e.message);
   }
 }
+
+window.submitRegister = async function() {
+  const token = document.getElementById('register-token').value;
+  const first_name = document.getElementById('register-first').value.trim();
+  const last_name = document.getElementById('register-last').value.trim();
+
+  if (!first_name) { tgAlert('Please enter your first name.'); return; }
+
+  const initData = tg?.initData || '';
+  try {
+    const auth = await api.registerWithInvite(initData, token, first_name, last_name);
+    setToken(auth.access);
+    currentUser = auth.user;
+    await loadTickets();
+  } catch (e) {
+    tgAlert(e.message);
+  }
+};
 
 window.submitLinkAccount = async function() {
   const username = document.getElementById('link-username').value.trim();
@@ -485,15 +526,19 @@ function showError(msg) {
 
 window.showStationWorkers = async function() {
   showScreen('screen-station-workers');
+  const isManager = currentUser.role === 'station_manager';
   const btnDeputies = document.getElementById('btn-deputies');
-  if (btnDeputies) btnDeputies.style.display = currentUser.role === 'station_manager' ? 'inline' : 'none';
+  if (btnDeputies) btnDeputies.style.display = isManager ? 'inline' : 'none';
+  const btnInvite = document.getElementById('btn-invite');
+  if (btnInvite) btnInvite.style.display = isManager ? 'inline' : 'none';
+
   const list = document.getElementById('station-workers-list');
   list.innerHTML = '<div class="loading">Loading...</div>';
 
   try {
     const workers = await api.getStationWorkers();
     if (!workers.length) {
-      list.innerHTML = '<div class="empty">No workers yet. Add the first one.</div>';
+      list.innerHTML = '<div class="empty">No workers yet. Share the invite link to add workers.</div>';
       return;
     }
     list.innerHTML = workers.map(w => `
@@ -502,11 +547,112 @@ window.showStationWorkers = async function() {
           <div class="card-title">${escHtml(w.name)}</div>
           <div class="card-meta">@${escHtml(w.username)} · ${w.is_active ? 'Active' : '<span style="color:#dc3545">Deactivated</span>'}</div>
         </div>
-        ${w.is_active ? `<button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeWorker(${w.id}, '${escHtml(w.name)}')">Remove</button>` : ''}
+        ${w.is_active && isManager ? `
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <button class="btn btn-secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="promoteToDeputy(${w.id}, '${escHtml(w.name)}')">Deputy</button>
+            <button class="btn btn-danger" style="width:auto;padding:4px 10px;font-size:12px" onclick="removeWorker(${w.id}, '${escHtml(w.name)}')">Remove</button>
+          </div>
+        ` : w.is_active ? `<button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeWorker(${w.id}, '${escHtml(w.name)}')">Remove</button>` : ''}
       </div>
     `).join('');
   } catch (e) {
     list.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+};
+
+window.promoteToDeputy = async function(id, name) {
+  const confirmed = await tgConfirm(`Promote ${name} to deputy?`);
+  if (!confirmed) return;
+  try {
+    await api.addStationDeputy({ worker_id: id });
+    tgAlert(`${name} is now a deputy.`);
+    await showStationWorkers();
+  } catch (e) {
+    tgAlert(e.message);
+  }
+};
+
+// ── Invite Link ───────────────────────────────────────────────────────────────
+
+let currentInviteStationId = null;
+let currentInviteLink = null;
+
+window.showInviteLink = async function() {
+  showScreen('screen-station-invite');
+  currentInviteStationId = null;
+  currentInviteLink = null;
+
+  const stationField = document.getElementById('invite-station-field');
+  stationField.style.display = 'none';
+
+  try {
+    const stations = await api.getMyStations();
+    if (stations.length > 1) {
+      const select = document.getElementById('invite-station-select');
+      select.innerHTML = stations.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+      stationField.style.display = '';
+      select.onchange = () => loadInviteLink(parseInt(select.value));
+      currentInviteStationId = stations[0].id;
+    } else if (stations.length === 1) {
+      currentInviteStationId = stations[0].id;
+    }
+    if (currentInviteStationId) await loadInviteLink(currentInviteStationId);
+  } catch (e) {
+    tgAlert('Error: ' + e.message);
+  }
+};
+
+async function loadInviteLink(stationId) {
+  currentInviteStationId = stationId;
+  const linkBox = document.getElementById('invite-link-box');
+  const noLink = document.getElementById('invite-no-link');
+  try {
+    const data = await api.getStationInvite(stationId);
+    if (data.link) {
+      currentInviteLink = data.link;
+      document.getElementById('invite-link-text').textContent = data.link;
+      linkBox.style.display = '';
+      noLink.style.display = 'none';
+    } else {
+      currentInviteLink = null;
+      linkBox.style.display = 'none';
+      noLink.style.display = '';
+    }
+  } catch (e) {
+    tgAlert('Error: ' + e.message);
+  }
+}
+
+window.copyInviteLink = function() {
+  if (!currentInviteLink) return;
+  navigator.clipboard.writeText(currentInviteLink)
+    .then(() => tgAlert('Link copied to clipboard.'))
+    .catch(() => tgAlert(currentInviteLink));
+};
+
+window.generateInviteLink = async function() {
+  try {
+    const data = await api.generateStationInvite(currentInviteStationId);
+    currentInviteLink = data.link;
+    document.getElementById('invite-link-text').textContent = data.link;
+    document.getElementById('invite-link-box').style.display = '';
+    document.getElementById('invite-no-link').style.display = 'none';
+    tgAlert('New link generated. The old link no longer works.');
+  } catch (e) {
+    tgAlert(e.message);
+  }
+};
+
+window.deactivateInviteLink = async function() {
+  const confirmed = await tgConfirm('Deactivate this link? Workers will no longer be able to join with it.');
+  if (!confirmed) return;
+  try {
+    await api.deleteStationInvite(currentInviteStationId);
+    currentInviteLink = null;
+    document.getElementById('invite-link-box').style.display = 'none';
+    document.getElementById('invite-no-link').style.display = '';
+  } catch (e) {
+    tgAlert(e.message);
   }
 };
 
@@ -521,26 +667,6 @@ window.removeWorker = async function(id, name) {
   }
 };
 
-window.submitAddWorker = async function() {
-  const first_name = document.getElementById('new-worker-first').value.trim();
-  const last_name = document.getElementById('new-worker-last').value.trim();
-  const username = document.getElementById('new-worker-username').value.trim();
-  const password = document.getElementById('new-worker-password').value.trim();
-
-  if (!username || !password) {
-    tgAlert('Username and password are required.');
-    return;
-  }
-
-  try {
-    await api.createStationWorker({ username, password, first_name, last_name });
-    tgAlert(`Account created for ${first_name || username}.`);
-    showScreen('screen-station-workers');
-    await showStationWorkers();
-  } catch (e) {
-    tgAlert(e.message);
-  }
-};
 
 // ── Change Password ───────────────────────────────────────────────────────────
 
@@ -741,18 +867,12 @@ window.removeDeputy = async function(id, name) {
 };
 
 window.showAddDeputy = async function() {
-  document.getElementById('deputy-type').value = 'promote';
-  document.getElementById('deputy-promote-section').style.display = '';
-  document.getElementById('deputy-new-section').style.display = 'none';
-  document.getElementById('deputy-notes') && (document.getElementById('deputy-notes').value = '');
-
-  // populate worker select
   try {
     const workers = await api.getStationWorkers();
     const active = workers.filter(w => w.is_active);
     const select = document.getElementById('deputy-worker-select');
     if (!active.length) {
-      tgAlert('No active workers to promote.');
+      tgAlert('No active workers to promote. Add workers first via invite link.');
       return;
     }
     select.innerHTML = active.map(w => `<option value="${w.id}">${escHtml(w.name)} (@${escHtml(w.username)})</option>`).join('');
@@ -760,13 +880,7 @@ window.showAddDeputy = async function() {
     tgAlert('Could not load workers: ' + e.message);
     return;
   }
-
   showScreen('screen-add-deputy');
-};
-
-window.toggleDeputyType = function(value) {
-  document.getElementById('deputy-promote-section').style.display = value === 'promote' ? '' : 'none';
-  document.getElementById('deputy-new-section').style.display = value === 'new' ? '' : 'none';
 };
 
 window.submitPromoteDeputy = async function() {
@@ -775,24 +889,6 @@ window.submitPromoteDeputy = async function() {
   try {
     await api.addStationDeputy({ worker_id: parseInt(workerId) });
     tgAlert('Worker promoted to deputy.');
-    showScreen('screen-station-deputies');
-    await showStationDeputies();
-  } catch (e) {
-    tgAlert(e.message);
-  }
-};
-
-window.submitCreateDeputy = async function() {
-  const username = document.getElementById('deputy-username').value.trim();
-  const password = document.getElementById('deputy-password').value.trim();
-  const first_name = document.getElementById('deputy-first').value.trim();
-  const last_name = document.getElementById('deputy-last').value.trim();
-
-  if (!username || !password) { tgAlert('Username and password are required.'); return; }
-
-  try {
-    await api.addStationDeputy({ username, password, first_name, last_name });
-    tgAlert(`Deputy account created for ${first_name || username}.`);
     showScreen('screen-station-deputies');
     await showStationDeputies();
   } catch (e) {
