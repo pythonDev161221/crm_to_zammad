@@ -4,7 +4,7 @@ from tasks.models import Ticket, Task, Comment, CommentPhoto, TicketPhoto
 
 
 class UserSerializer(serializers.ModelSerializer):
-    station_name = serializers.CharField(source='station.name', read_only=True, default=None)
+    station_name = serializers.SerializerMethodField()
     company_names = serializers.SerializerMethodField()
 
     class Meta:
@@ -12,11 +12,29 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'username', 'first_name', 'last_name', 'role', 'station', 'station_name', 'company_names', 'telegram_id', 'phone')
         read_only_fields = ('telegram_id', 'station_name', 'company_names')
 
+    def _managed_stations(self, obj):
+        from django.db.models import Q
+        return Station.objects.filter(Q(manager=obj) | Q(deputies=obj)).distinct()
+
+    def get_station_name(self, obj):
+        # Station managers/deputies: show all stations they manage
+        if obj.role in ('station_manager', 'deputy'):
+            names = list(self._managed_stations(obj).values_list('name', flat=True))
+            return ', '.join(names) if names else None
+        # Workers: their own station
+        return obj.station.name if obj.station else None
+
     def get_company_names(self, obj):
         # IT workers/managers: from M2M companies
         if obj.companies.exists():
             return [c.name for c in obj.companies.all()]
-        # Workers/managers/deputies: from station's company
+        # Station managers/deputies: from their managed stations' companies
+        if obj.role in ('station_manager', 'deputy'):
+            companies = set(
+                s.company.name for s in self._managed_stations(obj).select_related('company') if s.company
+            )
+            return list(companies)
+        # Workers: from their station's company
         if obj.station and obj.station.company:
             return [obj.station.company.name]
         return []
