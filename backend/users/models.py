@@ -10,12 +10,14 @@ class User(AbstractUser):
         STATION_MANAGER = 'station_manager', 'Station Manager'
         DEPUTY = 'deputy', 'Deputy'
         IT_MANAGER = 'it_manager', 'IT Manager'
+        IT_DEPUTY = 'it_deputy', 'IT Deputy'
         IT_WORKER = 'it_worker', 'IT Worker'
         SUPPLY_WORKER = 'supply_worker', 'Supply Worker'
         WORKER = 'worker', 'Worker'
 
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.WORKER)
     telegram_id = models.BigIntegerField(unique=True, null=True, blank=True)
+    phone = models.CharField(max_length=30, blank=True, default='')
     station = models.ForeignKey(
         'Station', on_delete=models.SET_NULL, null=True, blank=True, related_name='users'
     )

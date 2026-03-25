@@ -1,3 +1,5 @@
+import base64
+import mimetypes
 import requests
 from django.conf import settings
 
@@ -31,12 +33,24 @@ class ZammadClient:
     # ── Groups ────────────────────────────────────────────────────────────────
 
     def get_or_create_group(self, name):
+        """Returns (group_id, full_group_name)."""
         groups = self.get('/groups')
+        users_group_id = next((g['id'] for g in groups if g['name'] == 'Users'), None)
         for g in groups:
-            if g['name'] == name:
-                return g['id']
-        result = self.post('/groups', {'name': name, 'active': True})
-        return result['id']
+            if g.get('name_last') == name:
+                return g['id'], g['name']
+        payload = {'name': name, 'active': True}
+        if users_group_id:
+            payload['parent_id'] = users_group_id
+        result = self.post('/groups', payload)
+        group_id = result['id']
+        full_name = result['name']
+        # Ensure the API user has access to the new group
+        me = self.get('/users/me')
+        current_groups = me.get('group_ids', {})
+        current_groups[str(group_id)] = ['full']
+        self.put(f'/users/{me["id"]}', {'group_ids': current_groups})
+        return group_id, full_name
 
     # ── Organizations ─────────────────────────────────────────────────────────
 
@@ -70,6 +84,38 @@ class ZammadClient:
         group_ids_payload = {str(gid): ['full'] for gid in group_ids}
         self.put(f'/users/{agent_id}', {'group_ids': group_ids_payload})
 
+    def get_or_create_customer(self, user, organization_id=None):
+        results = self.get('/users/search', params={'query': user.username, 'limit': 10})
+        for u in results:
+            if u.get('login') == user.username:
+                return u['login']
+        payload = {
+            'firstname': user.first_name or user.username,
+            'lastname': user.last_name or '',
+            'login': user.username,
+            'email': user.email or f'{user.username}@internal.local',
+            'roles': ['Customer'],
+            'active': True,
+        }
+        if organization_id:
+            payload['organization_id'] = organization_id
+        result = self.post('/users', payload)
+        return result['login']
+
+
+def _photo_attachments(photos):
+    attachments = []
+    for photo in photos:
+        try:
+            with photo.image.open('rb') as f:
+                data = base64.b64encode(f.read()).decode('utf-8')
+            mime = mimetypes.guess_type(photo.image.name)[0] or 'image/jpeg'
+            filename = photo.image.name.split('/')[-1]
+            attachments.append({'filename': filename, 'data': data, 'mime-type': mime})
+        except Exception:
+            pass
+    return attachments
+
 
 def push_to_zammad(ticket):
     client = ZammadClient()
@@ -77,28 +123,36 @@ def push_to_zammad(ticket):
     station = ticket.station
     company = station.company if station else None
 
-    group_name = company.name if company else 'Users'
-    client.get_or_create_group(group_name)
+    group_id, group_full_name = client.get_or_create_group(company.name if company else 'Users')
 
+    org_id = None
     if station:
-        client.get_or_create_organization(station.name)
+        org_id = client.get_or_create_organization(station.name)
 
-    photo_count = ticket.photos.count()
+    customer_login = client.get_or_create_customer(ticket.created_by, organization_id=org_id)
+
     body = ticket.description or ticket.title
-    if photo_count:
-        body += f'\n\n[{photo_count} photo(s) attached in original report]'
+    phone = ticket.created_by.phone
+    if phone:
+        body = f'Phone: {phone}\n\n{body}'
+    ticket_attachments = _photo_attachments(ticket.photos.all())
+
+    article_payload = {
+        'subject': ticket.title,
+        'body': body,
+        'type': 'note',
+        'internal': False,
+    }
+    if ticket_attachments:
+        article_payload['attachments'] = ticket_attachments
 
     zammad_ticket = client.post('/tickets', {
         'title': ticket.title,
-        'group': group_name,
+        'group': group_full_name,
         'organization': station.name if station else None,
-        'customer': ticket.created_by.username,
-        'article': {
-            'subject': ticket.title,
-            'body': body,
-            'type': 'note',
-            'internal': False,
-        },
+        'customer': customer_login,
+        'state': 'closed',
+        'article': article_payload,
     })
 
     zammad_ticket_id = zammad_ticket['id']
@@ -123,15 +177,19 @@ def push_to_zammad(ticket):
             'internal': True,
         })
 
-    for comment in ticket.comments.select_related('author').all():
+    for comment in ticket.comments.select_related('author').prefetch_related('photos').all():
         author_name = comment.author.get_full_name() or comment.author.username
-        client.post('/ticket_articles', {
+        comment_payload = {
             'ticket_id': zammad_ticket_id,
             'subject': f'Comment by {author_name}',
             'body': comment.text or '(photo)',
             'type': 'note',
             'internal': comment.is_internal,
-        })
+        }
+        comment_attachments = _photo_attachments(comment.photos.all())
+        if comment_attachments:
+            comment_payload['attachments'] = comment_attachments
+        client.post('/ticket_articles', comment_payload)
 
     ticket.zammad_synced = True
     ticket.save(update_fields=['zammad_synced'])

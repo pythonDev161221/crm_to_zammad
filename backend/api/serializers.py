@@ -6,7 +6,7 @@ from tasks.models import Ticket, Task, Comment, CommentPhoto, TicketPhoto
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'first_name', 'last_name', 'role', 'station', 'telegram_id')
+        fields = ('id', 'username', 'first_name', 'last_name', 'role', 'station', 'telegram_id', 'phone')
         read_only_fields = ('telegram_id',)
 
 
@@ -52,11 +52,12 @@ class TicketSerializer(serializers.ModelSerializer):
     comments = serializers.SerializerMethodField()
     photos = TicketPhotoSerializer(many=True, read_only=True)
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    created_by_phone = serializers.CharField(source='created_by.phone', read_only=True)
 
     class Meta:
         model = Ticket
         fields = ('id', 'title', 'description', 'status', 'created_by', 'created_by_name',
-                  'photos', 'tasks', 'comments', 'created_at', 'resolved_at')
+                  'created_by_phone', 'photos', 'tasks', 'comments', 'created_at', 'resolved_at')
         read_only_fields = ('created_by', 'created_at', 'resolved_at')
 
     def get_comments(self, obj):

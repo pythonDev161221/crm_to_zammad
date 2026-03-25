@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from tasks.models import Ticket, Task, Comment
 from users.models import User, StationInvite
 from zammad_bridge.client import push_to_zammad
-from .permissions import IsITWorker, IsITOrSupplyWorker, IsITManager, IsStationManager, IsStationManagerOrDeputy, IsWorker, IsWorkerOrStationManager
+from .permissions import IsITWorker, IsITOrSupplyWorker, IsITManager, IsITManagerOrDeputy, IsStationManager, IsStationManagerOrDeputy, IsWorker, IsWorkerOrStationManager
 from .serializers import (
     TicketSerializer, TicketCreateSerializer,
     TaskSerializer, CommentSerializer, UserSerializer,
@@ -19,6 +19,12 @@ class MeView(APIView):
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+    def patch(self, request):
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 class TicketListCreateView(generics.ListCreateAPIView):
@@ -46,7 +52,7 @@ class TicketListCreateView(generics.ListCreateAPIView):
             return qs.filter(station_id__in=station_ids)
         if user.role == User.Role.SUPPLY_WORKER:
             return qs.filter(tasks__assigned_to=user).distinct()
-        if user.role in (User.Role.IT_WORKER, User.Role.IT_MANAGER):
+        if user.role in (User.Role.IT_WORKER, User.Role.IT_MANAGER, User.Role.IT_DEPUTY):
             from django.db.models import Q
             user_companies = user.companies.all()
             return qs.filter(
@@ -100,7 +106,7 @@ class TicketDetailView(generics.RetrieveAPIView):
             return qs.filter(station_id__in=station_ids)
         if user.role == User.Role.SUPPLY_WORKER:
             return qs.filter(tasks__assigned_to=user).distinct()
-        if user.role in (User.Role.IT_WORKER, User.Role.IT_MANAGER):
+        if user.role in (User.Role.IT_WORKER, User.Role.IT_MANAGER, User.Role.IT_DEPUTY):
             from django.db.models import Q
             user_companies = user.companies.all()
             return qs.filter(
@@ -305,7 +311,7 @@ class StationWorkerDeleteView(APIView):
 
 
 class MyCompaniesView(APIView):
-    permission_classes = [IsAuthenticated, IsITManager]
+    permission_classes = [IsAuthenticated, IsITManagerOrDeputy]
 
     def get(self, request):
         companies = request.user.companies.all()
@@ -410,7 +416,7 @@ class ManageSupplyWorkerDeleteView(APIView):
 
 
 class ManageStationManagersView(APIView):
-    permission_classes = [IsAuthenticated, IsITManager]
+    permission_classes = [IsAuthenticated, IsITManagerOrDeputy]
 
     def _company_station_ids(self, user):
         from users.models import Station
@@ -460,7 +466,7 @@ class ManageStationManagersView(APIView):
 
 
 class ManageStationManagerDeleteView(APIView):
-    permission_classes = [IsAuthenticated, IsITManager]
+    permission_classes = [IsAuthenticated, IsITManagerOrDeputy]
 
     def delete(self, request, pk):
         from django.db.models import Q
@@ -479,8 +485,8 @@ class ManageStationManagerDeleteView(APIView):
 
 
 class ManageCompanyStationsView(APIView):
-    """List stations in IT Manager's companies (for assigning station managers)."""
-    permission_classes = [IsAuthenticated, IsITManager]
+    """List stations in IT Manager's/IT Deputy's companies (for assigning station managers)."""
+    permission_classes = [IsAuthenticated, IsITManagerOrDeputy]
 
     def get(self, request):
         from users.models import Station

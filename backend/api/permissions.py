@@ -22,6 +22,11 @@ class IsITManager(BasePermission):
         return request.user.role in (User.Role.IT_MANAGER, User.Role.ADMIN)
 
 
+class IsITManagerOrDeputy(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.role in (User.Role.IT_MANAGER, User.Role.IT_DEPUTY, User.Role.ADMIN)
+
+
 class IsStationManager(BasePermission):
     """Primary station manager only — not deputies."""
     def has_permission(self, request, view):
