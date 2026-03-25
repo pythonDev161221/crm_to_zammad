@@ -1,4 +1,4 @@
-import { api, setToken } from '/static/api.js?v=4';
+import { api, setToken } from '/static/api.js?v=5';
 
 const tg = window.Telegram?.WebApp;
 const inTelegram = !!(tg?.initData);
@@ -212,7 +212,7 @@ function renderTicketDetail(ticket) {
 
   const body = document.getElementById('ticket-detail-body');
   const role = currentUser.role;
-  const isITWorker = role === 'it_worker' || role === 'it_manager' || role === 'admin';
+  const isITWorker = role === 'it_worker' || role === 'it_deputy' || role === 'it_manager' || role === 'admin';
   const isSupplyWorker = role === 'supply_worker';
   const isManager = role === 'station_manager' || role === 'deputy';
   const canComment = !isManager;
