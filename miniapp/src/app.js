@@ -1,4 +1,4 @@
-import { api, setToken } from '/static/api.js?v=2';
+import { api, setToken } from '/static/api.js?v=3';
 
 const tg = window.Telegram?.WebApp;
 const inTelegram = !!(tg?.initData);
@@ -605,8 +605,11 @@ window.showProfile = async function() {
       [me.first_name, me.last_name].filter(Boolean).join(' ') || me.username;
     document.getElementById('profile-role').textContent = formatRole(me.role);
     const stationEl = document.getElementById('profile-station');
-    stationEl.textContent = me.station_name || '';
-    stationEl.style.display = me.station_name ? '' : 'none';
+    const parts = [];
+    if (me.station_name) parts.push(me.station_name);
+    if (me.company_names?.length) parts.push(me.company_names.join(', '));
+    stationEl.textContent = parts.join(' · ');
+    stationEl.style.display = parts.length ? '' : 'none';
     const phoneRow = document.getElementById('profile-phone-row');
     if (me.phone) {
       phoneRow.style.display = '';

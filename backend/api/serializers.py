@@ -5,11 +5,21 @@ from tasks.models import Ticket, Task, Comment, CommentPhoto, TicketPhoto
 
 class UserSerializer(serializers.ModelSerializer):
     station_name = serializers.CharField(source='station.name', read_only=True, default=None)
+    company_names = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'first_name', 'last_name', 'role', 'station', 'station_name', 'telegram_id', 'phone')
-        read_only_fields = ('telegram_id', 'station_name')
+        fields = ('id', 'username', 'first_name', 'last_name', 'role', 'station', 'station_name', 'company_names', 'telegram_id', 'phone')
+        read_only_fields = ('telegram_id', 'station_name', 'company_names')
+
+    def get_company_names(self, obj):
+        # IT workers/managers: from M2M companies
+        if obj.companies.exists():
+            return [c.name for c in obj.companies.all()]
+        # Workers/managers/deputies: from station's company
+        if obj.station and obj.station.company:
+            return [obj.station.company.name]
+        return []
 
 
 class StationSerializer(serializers.ModelSerializer):
