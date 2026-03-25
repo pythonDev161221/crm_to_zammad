@@ -9,12 +9,12 @@ class IsAdmin(BasePermission):
 
 class IsITWorker(BasePermission):
     def has_permission(self, request, view):
-        return request.user.role in (User.Role.IT_WORKER, User.Role.IT_MANAGER, User.Role.ADMIN)
+        return request.user.role in (User.Role.IT_WORKER, User.Role.IT_DEPUTY, User.Role.IT_MANAGER, User.Role.ADMIN)
 
 
 class IsITOrSupplyWorker(BasePermission):
     def has_permission(self, request, view):
-        return request.user.role in (User.Role.IT_WORKER, User.Role.IT_MANAGER, User.Role.SUPPLY_WORKER, User.Role.ADMIN)
+        return request.user.role in (User.Role.IT_WORKER, User.Role.IT_DEPUTY, User.Role.IT_MANAGER, User.Role.SUPPLY_WORKER, User.Role.ADMIN)
 
 
 class IsITManager(BasePermission):
