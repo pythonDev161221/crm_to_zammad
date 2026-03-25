@@ -133,6 +133,11 @@ def push_to_zammad(ticket):
 
     customer_login = client.get_or_create_customer(ticket.created_by, organization_id=org_id)
 
+    owner_login = None
+    if ticket.resolved_by:
+        owner_id = client.get_or_create_agent(ticket.resolved_by)
+        owner_login = ticket.resolved_by.username
+
     body = ticket.description or ticket.title
     phone = ticket.created_by.phone
     if phone:
@@ -148,14 +153,18 @@ def push_to_zammad(ticket):
     if ticket_attachments:
         article_payload['attachments'] = ticket_attachments
 
-    zammad_ticket = client.post('/tickets', {
+    ticket_payload = {
         'title': ticket.title,
         'group': group_full_name,
         'organization': station.name if station else None,
         'customer': customer_login,
         'state': 'closed',
         'article': article_payload,
-    })
+    }
+    if owner_login:
+        ticket_payload['owner'] = owner_login
+
+    zammad_ticket = client.post('/tickets', ticket_payload)
 
     zammad_ticket_id = zammad_ticket['id']
 

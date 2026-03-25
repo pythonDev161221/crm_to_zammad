@@ -134,6 +134,7 @@ class TicketResolveView(APIView):
 
         ticket.status = Ticket.Status.RESOLVED
         ticket.resolved_at = timezone.now()
+        ticket.resolved_by = request.user
         ticket.save()
 
         try:
