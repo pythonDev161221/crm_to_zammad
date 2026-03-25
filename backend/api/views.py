@@ -484,6 +484,45 @@ class ManageStationManagerDeleteView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class ManageITDeputiesView(APIView):
+    permission_classes = [IsAuthenticated, IsITManager]
+
+    def get(self, request):
+        companies = request.user.companies.all()
+        qs = User.objects.filter(role=User.Role.IT_DEPUTY, companies__in=companies).distinct()
+        return Response([{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active} for u in qs])
+
+    def post(self, request):
+        from rest_framework.exceptions import ValidationError
+        companies = list(request.user.companies.all())
+        if not companies:
+            return Response({'detail': 'No companies assigned.'}, status=status.HTTP_403_FORBIDDEN)
+        worker_id = request.data.get('worker_id')
+        if not worker_id:
+            return Response({'detail': 'worker_id required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            worker = User.objects.get(pk=worker_id, role=User.Role.IT_WORKER, companies__in=companies)
+        except User.DoesNotExist:
+            return Response({'detail': 'IT worker not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
+        worker.role = User.Role.IT_DEPUTY
+        worker.save(update_fields=['role'])
+        return Response({'id': worker.id, 'username': worker.username, 'name': worker.get_full_name() or worker.username}, status=status.HTTP_200_OK)
+
+
+class ManageITDeputyDemoteView(APIView):
+    permission_classes = [IsAuthenticated, IsITManager]
+
+    def delete(self, request, pk):
+        companies = request.user.companies.all()
+        try:
+            deputy = User.objects.get(pk=pk, role=User.Role.IT_DEPUTY, companies__in=companies)
+        except User.DoesNotExist:
+            return Response({'detail': 'IT deputy not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
+        deputy.role = User.Role.IT_WORKER
+        deputy.save(update_fields=['role'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class ManageCompanyStationsView(APIView):
     """List stations in IT Manager's/IT Deputy's companies (for assigning station managers)."""
     permission_classes = [IsAuthenticated, IsITManagerOrDeputy]

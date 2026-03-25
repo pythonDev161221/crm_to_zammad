@@ -37,19 +37,21 @@ class ZammadClient:
         groups = self.get('/groups')
         users_group_id = next((g['id'] for g in groups if g['name'] == 'Users'), None)
         for g in groups:
-            if g.get('name_last') == name:
+            if g.get('name_last') == name or g.get('name') == name:
                 return g['id'], g['name']
         payload = {'name': name, 'active': True}
         if users_group_id:
             payload['parent_id'] = users_group_id
         result = self.post('/groups', payload)
         group_id = result['id']
-        full_name = result['name']
-        # Ensure the API user has access to the new group
-        me = self.get('/users/me')
-        current_groups = me.get('group_ids', {})
-        current_groups[str(group_id)] = ['full']
-        self.put(f'/users/{me["id"]}', {'group_ids': current_groups})
+        full_name = result.get('name', name)
+        try:
+            me = self.get('/users/me')
+            current_groups = me.get('group_ids', {})
+            current_groups[str(group_id)] = ['full']
+            self.put(f'/users/{me["id"]}', {'group_ids': current_groups})
+        except Exception:
+            pass
         return group_id, full_name
 
     # ── Organizations ─────────────────────────────────────────────────────────
@@ -100,7 +102,7 @@ class ZammadClient:
         if organization_id:
             payload['organization_id'] = organization_id
         result = self.post('/users', payload)
-        return result['login']
+        return result.get('login', user.username)
 
 
 def _photo_attachments(photos):

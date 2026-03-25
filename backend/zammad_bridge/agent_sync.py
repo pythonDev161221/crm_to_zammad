@@ -20,7 +20,7 @@ def sync_agent_companies(user):
         client = ZammadClient()
         agent_id = client.get_or_create_agent(user)
         companies = user.companies.all()
-        group_ids = [client.get_or_create_group(c.name) for c in companies]
+        group_ids = [client.get_or_create_group(c.name)[0] for c in companies]
         client.set_agent_groups(agent_id, group_ids)
     except Exception as e:
         logger.error(f'Zammad group sync failed for user {user.username}: {e}')

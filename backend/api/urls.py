@@ -40,6 +40,8 @@ urlpatterns = [
     path('manage/station-managers/', views.ManageStationManagersView.as_view(), name='manage-station-managers'),
     path('manage/station-managers/<int:pk>/', views.ManageStationManagerDeleteView.as_view(), name='manage-station-manager-delete'),
     path('manage/stations/', views.ManageCompanyStationsView.as_view(), name='manage-stations'),
+    path('manage/it-deputies/', views.ManageITDeputiesView.as_view(), name='manage-it-deputies'),
+    path('manage/it-deputies/<int:pk>/', views.ManageITDeputyDemoteView.as_view(), name='manage-it-deputy-demote'),
 
     # Change password
     path('auth/change-password/', views.ChangePasswordView.as_view(), name='change-password'),

@@ -169,7 +169,7 @@ class AgentSyncTests(TestCase):
     def test_sync_agent_companies_sets_correct_groups(self, MockClient):
         mock_client = MockClient.return_value
         mock_client.get_or_create_agent.return_value = 99
-        mock_client.get_or_create_group.side_effect = lambda name: {'Shell': 1, 'BP': 2}[name]
+        mock_client.get_or_create_group.side_effect = lambda name: ({'Shell': 1, 'BP': 2}[name], f'Users::{name}')
 
         self.it.companies.set([self.company1, self.company2])
         sync_agent_companies(self.it)
