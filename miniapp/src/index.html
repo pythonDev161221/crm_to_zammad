@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Tech Support</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css?v=2">
 </head>
 <body>
 <div id="app">
@@ -64,7 +64,7 @@
       <h1>My Tickets</h1>
       <button id="btn-station" class="back-btn" onclick="showStationWorkers()" style="display:none">Station &#9881;</button>
       <button id="btn-manage" class="back-btn" onclick="showScreen('screen-manage')" style="display:none">Staff &#9881;</button>
-      <button class="back-btn" onclick="showScreen('screen-change-password')" title="Change password">&#128273;</button>
+      <button class="back-btn" onclick="showProfile()" title="Profile">&#128100;</button>
     </div>
     <div id="tickets-list" class="card-list"></div>
     <button id="fab-new-ticket" class="fab" onclick="showCreateTicket()" style="display:none">+</button>
@@ -289,10 +289,58 @@
     </div>
   </div>
 
+  <!-- Rate Ticket -->
+  <div id="screen-rate-ticket" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <h1>Rate Resolution</h1>
+    </div>
+    <div class="form">
+      <p id="rate-ticket-title" style="font-weight:600;margin-bottom:8px"></p>
+      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:20px">
+        Was your problem resolved? Rate the quality of support.
+      </p>
+      <input type="hidden" id="rate-ticket-id">
+      <div id="star-rating" style="display:flex;gap:12px;justify-content:center;font-size:36px;margin-bottom:24px">
+        <span class="star" data-value="1" onclick="selectStar(1)" style="cursor:pointer;opacity:0.3">&#9733;</span>
+        <span class="star" data-value="2" onclick="selectStar(2)" style="cursor:pointer;opacity:0.3">&#9733;</span>
+        <span class="star" data-value="3" onclick="selectStar(3)" style="cursor:pointer;opacity:0.3">&#9733;</span>
+        <span class="star" data-value="4" onclick="selectStar(4)" style="cursor:pointer;opacity:0.3">&#9733;</span>
+        <span class="star" data-value="5" onclick="selectStar(5)" style="cursor:pointer;opacity:0.3">&#9733;</span>
+      </div>
+      <button class="btn btn-primary" onclick="submitRating()">Submit Rating</button>
+      <button class="btn btn-danger" style="margin-top:8px" onclick="submitNotResolved()">Not Resolved</button>
+    </div>
+  </div>
+
+  <!-- Profile -->
+  <div id="screen-profile" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <h1>Profile</h1>
+    </div>
+    <div class="form">
+      <div style="text-align:center;padding:20px 0 16px">
+        <div style="font-size:52px">&#128100;</div>
+        <div id="profile-name" style="font-size:18px;font-weight:600;margin-top:8px"></div>
+        <div id="profile-role" style="color:var(--hint);font-size:14px;margin-top:4px"></div>
+        <div id="profile-station" style="color:var(--hint);font-size:13px;margin-top:2px"></div>
+      </div>
+      <div id="profile-phone-row" style="display:none;padding:12px 0;border-top:1px solid var(--secondary-bg);border-bottom:1px solid var(--secondary-bg);margin-bottom:24px">
+        <div style="font-size:12px;color:var(--hint);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Phone</div>
+        <div id="profile-phone-value" style="font-size:15px"></div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Settings</div>
+      <div class="card" onclick="showScreen('screen-change-password')" style="cursor:pointer">
+        <div class="card-title">Change Password</div>
+      </div>
+    </div>
+  </div>
+
   <!-- Change Password -->
   <div id="screen-change-password" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <button class="back-btn" onclick="showScreen('screen-profile')">&#8592; Back</button>
       <h1>Change Password</h1>
     </div>
     <div class="form">
@@ -313,6 +361,6 @@
   </div>
 
 </div>
-<script type="module" src="/static/app.js"></script>
+<script type="module" src="/static/app.js?v=2"></script>
 </body>
 </html>

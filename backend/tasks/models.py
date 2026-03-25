@@ -21,6 +21,7 @@ class Ticket(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
         null=True, blank=True, related_name='resolved_tickets'
     )
+    rating = models.IntegerField(null=True, blank=True)  # 0=not resolved, 1-5 stars, null=unrated
     zammad_synced = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     resolved_at = models.DateTimeField(null=True, blank=True)

@@ -8,6 +8,7 @@ urlpatterns = [
     path('tickets/', views.TicketListCreateView.as_view(), name='ticket-list'),
     path('tickets/<int:pk>/', views.TicketDetailView.as_view(), name='ticket-detail'),
     path('tickets/<int:pk>/resolve/', views.TicketResolveView.as_view(), name='ticket-resolve'),
+    path('tickets/<int:pk>/rate/', views.TicketRateView.as_view(), name='ticket-rate'),
 
     # Tasks (assigned to IT workers within a ticket)
     path('tickets/<int:ticket_pk>/tasks/', views.TaskCreateView.as_view(), name='task-create'),

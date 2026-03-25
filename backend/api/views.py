@@ -42,7 +42,11 @@ class TicketListCreateView(generics.ListCreateAPIView):
         user = self.request.user
         qs = Ticket.objects.exclude(status=Ticket.Status.RESOLVED)
         if user.role == User.Role.WORKER:
-            return qs.filter(created_by=user)
+            from django.db.models import Q
+            return Ticket.objects.filter(created_by=user).filter(
+                Q(status__in=[Ticket.Status.OPEN, Ticket.Status.IN_PROGRESS]) |
+                Q(status=Ticket.Status.RESOLVED, rating__isnull=True)
+            )
         if user.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
             from django.db.models import Q
             from users.models import Station
@@ -96,7 +100,11 @@ class TicketDetailView(generics.RetrieveAPIView):
         user = self.request.user
         qs = Ticket.objects.exclude(status=Ticket.Status.RESOLVED)
         if user.role == User.Role.WORKER:
-            return qs.filter(created_by=user)
+            from django.db.models import Q
+            return Ticket.objects.filter(created_by=user).filter(
+                Q(status__in=[Ticket.Status.OPEN, Ticket.Status.IN_PROGRESS]) |
+                Q(status=Ticket.Status.RESOLVED, rating__isnull=True)
+            )
         if user.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
             from django.db.models import Q
             from users.models import Station
@@ -143,6 +151,27 @@ class TicketResolveView(APIView):
             pass  # zammad_synced stays False, retry via management command
 
         return Response(TicketSerializer(ticket).data)
+
+
+class TicketRateView(APIView):
+    permission_classes = [IsAuthenticated, IsWorker]
+
+    def post(self, request, pk):
+        try:
+            ticket = Ticket.objects.get(pk=pk, created_by=request.user, status=Ticket.Status.RESOLVED)
+        except Ticket.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if ticket.rating is not None:
+            return Response({'detail': 'Already rated.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        rating = request.data.get('rating')
+        if rating is None or not isinstance(rating, int) or rating < 0 or rating > 5:
+            return Response({'detail': 'Rating must be an integer from 0 to 5.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        ticket.rating = rating
+        ticket.save(update_fields=['rating'])
+        return Response({'detail': 'Rated successfully.'})
 
 
 class TaskCreateView(generics.CreateAPIView):

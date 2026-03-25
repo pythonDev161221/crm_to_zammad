@@ -12,10 +12,13 @@ function tgConfirm(msg) {
 }
 
 let currentUser = null;
+let previousScreen = 'screen-tickets';
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
 window.showScreen = function(id) {
+  const current = document.querySelector('.screen.active');
+  if (current && current.id !== id) previousScreen = current.id;
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const screen = document.getElementById(id);
   if (screen) screen.classList.add('active');
@@ -25,7 +28,7 @@ window.showScreen = function(id) {
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 async function init() {
-  if (inTelegram) { tg.ready(); tg.expand(); tg.BackButton.onClick(() => showScreen('screen-tickets')); }
+  if (inTelegram) { tg.ready(); tg.expand(); tg.BackButton.onClick(() => showScreen(previousScreen)); }
 
   showScreen('screen-loading');
 
@@ -151,21 +154,41 @@ function renderTicketList(tickets) {
   const btnManage = document.getElementById('btn-manage');
   btnManage.style.display = role === 'it_manager' ? 'inline' : 'none';
 
-  if (!tickets.length) {
+  const unrated = role === 'worker' ? tickets.filter(t => t.status === 'resolved' && t.rating === null) : [];
+  const active = role === 'worker' ? tickets.filter(t => t.status !== 'resolved') : tickets;
+
+  if (!active.length && !unrated.length) {
     list.innerHTML = '<div class="empty">No tickets yet.</div>';
     return;
   }
 
-  list.innerHTML = tickets.map(t => `
-    <div class="card" onclick="openTicket(${t.id})">
-      <div class="card-title">${escHtml(t.title)}</div>
-      <div class="card-meta">
-        <span class="badge badge-${t.status}">${formatStatus(t.status)}</span>
-        &nbsp;${formatDate(t.created_at)}
+  let html = '';
+
+  if (unrated.length) {
+    html += `<div style="padding:8px 16px 4px;font-size:13px;font-weight:600;color:var(--hint)">PENDING RATING</div>`;
+    html += unrated.map(t => `
+      <div class="card" onclick="openRateTicket(${t.id}, '${escHtml(t.title).replace(/'/g, "\\'")}')">
+        <div class="card-title">${escHtml(t.title)}</div>
+        <div class="card-meta" style="color:var(--button)">&#9733; Please rate this resolution</div>
       </div>
-      ${role !== 'worker' ? `<div class="card-meta" style="margin-top:4px">${t.tasks?.length || 0} task(s)</div>` : ''}
-    </div>
-  `).join('');
+    `).join('');
+  }
+
+  if (active.length) {
+    if (unrated.length) html += `<div style="padding:8px 16px 4px;font-size:13px;font-weight:600;color:var(--hint)">ACTIVE</div>`;
+    html += active.map(t => `
+      <div class="card" onclick="openTicket(${t.id})">
+        <div class="card-title">${escHtml(t.title)}</div>
+        <div class="card-meta">
+          <span class="badge badge-${t.status}">${formatStatus(t.status)}</span>
+          &nbsp;${formatDate(t.created_at)}
+        </div>
+        ${role !== 'worker' ? `<div class="card-meta" style="margin-top:4px">${t.tasks?.length || 0} task(s)</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  list.innerHTML = html;
 }
 
 // ── Ticket Detail ─────────────────────────────────────────────────────────────
@@ -201,6 +224,9 @@ function renderTicketDetail(ticket) {
       <div class="detail-section">
         <span class="badge badge-${ticket.status}">${formatStatus(ticket.status)}</span>
         <span style="color:var(--hint);font-size:13px;margin-left:8px">by ${escHtml(ticket.created_by_name)}</span>
+        ${(isITWorker || isSupplyWorker) && ticket.created_by_phone ? `
+          <a href="https://t.me/${encodeURIComponent(ticket.created_by_phone)}" style="display:inline-block;margin-left:8px;font-size:13px;color:var(--button)">&#128222; ${escHtml(ticket.created_by_phone)}</a>
+        ` : ''}
       </div>
 
       <!-- Description -->
@@ -265,6 +291,13 @@ function renderTicketDetail(ticket) {
       </div>
       <div id="comment-photo-preview" class="comment-photo-preview"></div>
     </div>` : ''}
+
+    <!-- Worker rating (for resolved unrated tickets) -->
+    ${role === 'worker' && ticket.status === 'resolved' && ticket.rating === null ? `
+      <div style="padding:0 16px 16px">
+        <button class="btn btn-primary" onclick="openRateTicket(${ticket.id}, '${escHtml(ticket.title).replace(/'/g, "\\'")}')">Rate this resolution</button>
+      </div>
+    ` : ''}
 
     <!-- IT Worker actions -->
     ${isITWorker && ticket.status !== 'resolved' ? `
@@ -349,6 +382,46 @@ window.resolveTicket = async function(ticketId) {
     tgAlert('Ticket resolved and archived to Zammad.');
     await loadTickets();
     showScreen('screen-tickets');
+  } catch (e) {
+    tgAlert(e.message);
+  }
+};
+
+let selectedStarRating = null;
+
+window.openRateTicket = function(ticketId, title) {
+  selectedStarRating = null;
+  document.getElementById('rate-ticket-id').value = ticketId;
+  document.getElementById('rate-ticket-title').textContent = title;
+  document.querySelectorAll('.star').forEach(s => s.style.opacity = '0.3');
+  showScreen('screen-rate-ticket');
+};
+
+window.selectStar = function(value) {
+  selectedStarRating = value;
+  document.querySelectorAll('.star').forEach(s => {
+    s.style.opacity = parseInt(s.dataset.value) <= value ? '1' : '0.3';
+  });
+};
+
+window.submitRating = async function() {
+  if (!selectedStarRating) { tgAlert('Please select a star rating.'); return; }
+  const ticketId = document.getElementById('rate-ticket-id').value;
+  try {
+    await api.rateTicket(parseInt(ticketId), selectedStarRating);
+    await loadTickets();
+  } catch (e) {
+    tgAlert(e.message);
+  }
+};
+
+window.submitNotResolved = async function() {
+  const ticketId = document.getElementById('rate-ticket-id').value;
+  const confirmed = await tgConfirm('Mark this ticket as not resolved?');
+  if (!confirmed) return;
+  try {
+    await api.rateTicket(parseInt(ticketId), 0);
+    await loadTickets();
   } catch (e) {
     tgAlert(e.message);
   }
@@ -515,6 +588,37 @@ function formatDate(iso) {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
+
+function formatRole(role) {
+  return {
+    worker: 'Worker', station_manager: 'Station Manager', deputy: 'Deputy',
+    it_worker: 'IT Worker', it_manager: 'IT Manager', it_deputy: 'IT Deputy',
+    supply_worker: 'Supply Worker', admin: 'Administrator',
+  }[role] || role;
+}
+
+window.showProfile = async function() {
+  showScreen('screen-profile');
+  try {
+    const me = await api.getMe();
+    document.getElementById('profile-name').textContent =
+      [me.first_name, me.last_name].filter(Boolean).join(' ') || me.username;
+    document.getElementById('profile-role').textContent = formatRole(me.role);
+    const stationEl = document.getElementById('profile-station');
+    stationEl.textContent = me.station_name || '';
+    stationEl.style.display = me.station_name ? '' : 'none';
+    const phoneRow = document.getElementById('profile-phone-row');
+    if (me.phone) {
+      phoneRow.style.display = '';
+      document.getElementById('profile-phone-value').innerHTML =
+        `<a href="https://t.me/${encodeURIComponent(me.phone)}" style="color:var(--button)">${escHtml(me.phone)}</a>`;
+    } else {
+      phoneRow.style.display = 'none';
+    }
+  } catch (e) {
+    tgAlert('Could not load profile: ' + e.message);
+  }
+};
 
 function showError(msg) {
   app.innerHTML = `<div class="loading" style="flex-direction:column;gap:8px">

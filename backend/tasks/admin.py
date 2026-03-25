@@ -18,10 +18,10 @@ class CommentInline(admin.TabularInline):
 
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
-    list_display = ('title', 'created_by', 'status', 'zammad_synced', 'created_at', 'resolved_at')
-    list_filter = ('status', 'zammad_synced')
+    list_display = ('title', 'created_by', 'status', 'rating', 'zammad_synced', 'created_at', 'resolved_at')
+    list_filter = ('status', 'zammad_synced', 'rating')
     search_fields = ('title', 'description', 'created_by__username')
-    readonly_fields = ('created_at', 'resolved_at', 'zammad_synced')
+    readonly_fields = ('created_at', 'resolved_at', 'zammad_synced', 'rating')
     inlines = [TaskInline, CommentInline]
 
 

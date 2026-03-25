@@ -79,6 +79,7 @@ export const api = {
 
   getManageStations: () => request('GET', '/manage/stations/'),
   resolveTicket: (id) => request('POST', `/tickets/${id}/resolve/`),
+  rateTicket: (id, rating) => request('POST', `/tickets/${id}/rate/`, { rating }),
 
   // Tasks (assigned to IT workers within a ticket)
   createTask: (ticketId, data) => request('POST', `/tickets/${ticketId}/tasks/`, data),
