@@ -1,4 +1,4 @@
-import { api, setToken } from '/static/api.js';
+import { api, setToken } from '/static/api.js?v=2';
 
 const tg = window.Telegram?.WebApp;
 const inTelegram = !!(tg?.initData);
