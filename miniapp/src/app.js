@@ -1,4 +1,4 @@
-import { api, setToken } from '/static/api.js?v=10';
+import { api, setToken } from '/static/api.js?v=11';
 
 const tg = window.Telegram?.WebApp;
 const inTelegram = !!(tg?.initData);
@@ -186,6 +186,9 @@ function renderTicketList(tickets) {
     html += active.map(t => `
       <div class="card" onclick="openTicket(${t.id})">
         <div class="card-title">${escHtml(t.title)}</div>
+        ${role !== 'worker' && (t.station_name || t.company_name) ? `
+          <div class="card-meta" style="margin-top:2px">${[t.station_name, t.company_name].filter(Boolean).map(escHtml).join(' · ')}</div>
+        ` : ''}
         <div class="card-meta">
           <span class="badge badge-${t.status}">${formatStatus(t.status)}</span>
           &nbsp;${formatDate(t.created_at)}
@@ -233,6 +236,9 @@ function renderTicketDetail(ticket) {
         <span style="color:var(--hint);font-size:13px;margin-left:8px">by ${escHtml(ticket.created_by_name)}</span>
         ${(isITWorker || isSupplyWorker) && ticket.created_by_phone ? `
           <a href="https://t.me/${encodeURIComponent(ticket.created_by_phone)}" style="display:inline-block;margin-left:8px;font-size:13px;color:var(--button)">&#128222; ${escHtml(ticket.created_by_phone)}</a>
+        ` : ''}
+        ${(ticket.station_name || ticket.company_name) ? `
+          <div style="margin-top:6px;font-size:13px;color:var(--hint)">${[ticket.station_name, ticket.company_name].filter(Boolean).map(escHtml).join(' · ')}</div>
         ` : ''}
       </div>
 

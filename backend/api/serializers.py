@@ -83,11 +83,14 @@ class TicketSerializer(serializers.ModelSerializer):
     photos = TicketPhotoSerializer(many=True, read_only=True)
     created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
     created_by_phone = serializers.CharField(source='created_by.phone', read_only=True)
+    station_name = serializers.CharField(source='station.name', default=None, read_only=True)
+    company_name = serializers.CharField(source='station.company.name', default=None, read_only=True)
 
     class Meta:
         model = Ticket
         fields = ('id', 'title', 'description', 'status', 'created_by', 'created_by_name',
-                  'created_by_phone', 'photos', 'tasks', 'comments', 'created_at', 'resolved_at', 'rating')
+                  'created_by_phone', 'station_name', 'company_name', 'photos', 'tasks',
+                  'comments', 'created_at', 'resolved_at', 'rating')
         read_only_fields = ('created_by', 'created_at', 'resolved_at', 'rating')
 
     def get_comments(self, obj):
