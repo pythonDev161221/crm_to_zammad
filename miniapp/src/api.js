@@ -45,6 +45,7 @@ export const api = {
 
   // Me
   getMe: () => request('GET', '/me/'),
+  updateMe: (data) => request('PATCH', '/me/', data),
 
   // Tickets (reported by worker)
   getTickets: () => request('GET', '/tickets/'),

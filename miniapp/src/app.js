@@ -103,6 +103,10 @@ async function init() {
 
     const auth = await api.telegramAuth(initData);
     if (auth.needs_linking) {
+      if (auth.inactive) {
+        const notice = document.getElementById('link-account-inactive-notice');
+        if (notice) notice.style.display = '';
+      }
       showScreen('screen-link-account');
       return;
     }
@@ -859,6 +863,37 @@ window.removeWorker = async function(id, name) {
   }
 };
 
+
+// ── Change Name ───────────────────────────────────────────────────────────────
+
+window.showChangeName = async function() {
+  showScreen('screen-change-name');
+  try {
+    const me = await api.getMe();
+    document.getElementById('change-name-first').value = me.first_name || '';
+    document.getElementById('change-name-last').value = me.last_name || '';
+  } catch (e) {}
+  document.getElementById('change-name-error').style.display = 'none';
+};
+
+window.submitChangeName = async function() {
+  const first_name = document.getElementById('change-name-first').value.trim();
+  const last_name = document.getElementById('change-name-last').value.trim();
+  const errEl = document.getElementById('change-name-error');
+  if (!first_name) {
+    errEl.textContent = 'First name is required.';
+    errEl.style.display = '';
+    return;
+  }
+  errEl.style.display = 'none';
+  try {
+    await api.updateMe({ first_name, last_name });
+    goBack();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = '';
+  }
+};
 
 // ── Change Password ───────────────────────────────────────────────────────────
 

@@ -61,6 +61,9 @@ class TelegramAuthView(APIView):
         except User.DoesNotExist:
             return Response({'needs_linking': True}, status=status.HTTP_200_OK)
 
+        if not user.is_active:
+            return Response({'needs_linking': True, 'inactive': True}, status=status.HTTP_200_OK)
+
         refresh = RefreshToken.for_user(user)
         return Response({
             'access': str(refresh.access_token),
@@ -127,7 +130,9 @@ class RegisterView(APIView):
 
         telegram_id = user_data['id']
 
-        if User.objects.filter(telegram_id=telegram_id).exists():
+        # Re-activate an inactive account via invite
+        existing = User.objects.filter(telegram_id=telegram_id).first()
+        if existing and existing.is_active:
             return Response({'detail': 'This Telegram account is already registered.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -135,23 +140,35 @@ class RegisterView(APIView):
         except StationInvite.DoesNotExist:
             return Response({'detail': 'Invalid or expired invite link.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        tg_username = user_data.get('username', '')
-        base_username = tg_username or f'user_{telegram_id}'
-        username = base_username
-        counter = 1
-        while User.objects.filter(username=username).exists():
-            username = f'{base_username}_{counter}'
-            counter += 1
+        if existing and not existing.is_active:
+            # Re-activate the old account with new station from invite
+            existing.is_active = True
+            existing.station = invite.station
+            existing.role = User.Role.WORKER
+            if first_name:
+                existing.first_name = first_name
+            if last_name:
+                existing.last_name = last_name
+            existing.save(update_fields=['is_active', 'station', 'role', 'first_name', 'last_name'])
+            worker = existing
+        else:
+            tg_username = user_data.get('username', '')
+            base_username = tg_username or f'user_{telegram_id}'
+            username = base_username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f'{base_username}_{counter}'
+                counter += 1
 
-        worker = User.objects.create_user(
-            username=username,
-            password=None,
-            first_name=first_name or user_data.get('first_name', ''),
-            last_name=last_name or user_data.get('last_name', ''),
-            role=User.Role.WORKER,
-            station=invite.station,
-            telegram_id=telegram_id,
-        )
+            worker = User.objects.create_user(
+                username=username,
+                password=None,
+                first_name=first_name or user_data.get('first_name', ''),
+                last_name=last_name or user_data.get('last_name', ''),
+                role=User.Role.WORKER,
+                station=invite.station,
+                telegram_id=telegram_id,
+            )
 
         refresh = RefreshToken.for_user(worker)
         return Response({

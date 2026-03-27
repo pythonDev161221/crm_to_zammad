@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Tech Support</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=20">
+  <link rel="stylesheet" href="/static/style.css?v=22">
 </head>
 <body>
 <div id="app">
@@ -46,6 +46,9 @@
       <h1>Activate Account</h1>
     </div>
     <div class="form">
+      <div id="link-account-inactive-notice" style="display:none;background:var(--secondary-bg);border-radius:8px;padding:12px;margin-bottom:16px;font-size:14px;color:var(--hint)">
+        Your account has been deactivated. Ask your manager for a new invite link to rejoin.
+      </div>
       <p style="color:var(--text-secondary);margin-bottom:16px;font-size:14px">
         Enter the username and password given to you by your station manager.
       </p>
@@ -372,9 +375,26 @@
         <div id="profile-phone-value" style="font-size:15px"></div>
       </div>
       <div style="font-size:12px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Settings</div>
-      <div class="card" onclick="showScreen('screen-change-password')" style="cursor:pointer">
+      <div class="card" onclick="showChangeName()" style="cursor:pointer">
+        <div class="card-title">Change Name</div>
+      </div>
+      <div class="card" onclick="showScreen('screen-change-password')" style="cursor:pointer;margin-top:8px">
         <div class="card-title">Change Password</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Change Name -->
+  <div id="screen-change-name" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
+      <h1>Change Name</h1>
+    </div>
+    <div class="form">
+      <input id="change-name-first" class="input" type="text" placeholder="First name">
+      <input id="change-name-last" class="input" type="text" placeholder="Last name">
+      <div id="change-name-error" class="error" style="display:none"></div>
+      <button class="btn" onclick="submitChangeName()">Save</button>
     </div>
   </div>
 
@@ -402,6 +422,6 @@
   </div>
 
 </div>
-<script type="module" src="/static/app.js?v=20"></script>
+<script type="module" src="/static/app.js?v=22"></script>
 </body>
 </html>
