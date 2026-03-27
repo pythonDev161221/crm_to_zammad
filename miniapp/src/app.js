@@ -1,4 +1,4 @@
-import { api, setToken } from '/static/api.js?v=8';
+import { api, setToken } from '/static/api.js?v=10';
 
 const tg = window.Telegram?.WebApp;
 const inTelegram = !!(tg?.initData);
@@ -82,7 +82,7 @@ async function init() {
     }
     setToken(auth.access);
     currentUser = auth.user;
-    if (currentUser.role === 'it_manager') {
+    if (currentUser.role === 'it_manager' || currentUser.role === 'it_deputy') {
       currentUser.companies = await api.getMyCompanies().catch(() => []);
     }
     await loadTickets();
@@ -119,7 +119,7 @@ window.submitLinkAccount = async function() {
     const auth = await api.linkAccount(initData, username, password);
     setToken(auth.access);
     currentUser = auth.user;
-    if (currentUser.role === 'it_manager') {
+    if (currentUser.role === 'it_manager' || currentUser.role === 'it_deputy') {
       currentUser.companies = await api.getMyCompanies().catch(() => []);
     }
     await loadTickets();
@@ -154,7 +154,12 @@ function renderTicketList(tickets) {
   btnStation.style.display = (role === 'station_manager' || role === 'deputy') ? 'inline' : 'none';
 
   const btnManage = document.getElementById('btn-manage');
-  btnManage.style.display = role === 'it_manager' ? 'inline' : 'none';
+  btnManage.style.display = (role === 'it_manager' || role === 'it_deputy') ? 'inline' : 'none';
+  const itOnlyCards = ['manage-card-it-worker', 'manage-card-supply-worker'];
+  itOnlyCards.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = role === 'it_manager' ? '' : 'none';
+  });
 
   const unrated = role === 'worker' ? tickets.filter(t => t.status === 'resolved' && t.rating === null) : [];
   const active = role === 'worker' ? tickets.filter(t => t.status !== 'resolved') : tickets;
@@ -864,12 +869,44 @@ window.openPhoto = function(src) {
 // ── IT Manager: Staff Management ──────────────────────────────────────────────
 
 let currentManageType = null;
+let currentCompanyId = null;
 
 const MANAGE_CONFIG = {
-  it_worker:       { title: 'IT Workers',       addTitle: 'Add IT Worker',       apiGet: () => api.getManageITWorkers(),       apiAdd: (d) => api.addManageITWorker(d),       apiRemove: (id) => api.removeManageITWorker(id) },
-  supply_worker:   { title: 'Supply Workers',    addTitle: 'Add Supply Worker',   apiGet: () => api.getManageSupplyWorkers(),   apiAdd: (d) => api.addManageSupplyWorker(d),   apiRemove: (id) => api.removeManageSupplyWorker(id) },
-  station_manager: { title: 'Station Managers',  addTitle: 'Add Station Manager', apiGet: () => api.getManageStationManagers(), apiAdd: (d) => api.addManageStationManager(d), apiRemove: (id) => api.removeManageStationManager(id) },
+  it_worker:       { title: 'IT Workers',       addTitle: 'Add IT Worker',       apiGet: () => api.getManageITWorkers(currentCompanyId),       apiAdd: (d) => api.addManageITWorker(d),       apiRemove: (id) => api.removeManageITWorker(id) },
+  supply_worker:   { title: 'Supply Workers',    addTitle: 'Add Supply Worker',   apiGet: () => api.getManageSupplyWorkers(currentCompanyId),   apiAdd: (d) => api.addManageSupplyWorker(d),   apiRemove: (id) => api.removeManageSupplyWorker(id) },
+  station_manager: { title: 'Station Managers',  addTitle: 'Add Station Manager', apiGet: () => api.getManageStationManagers(currentCompanyId), apiAdd: (d) => api.addManageStationManager(d), apiRemove: (id) => api.removeManageStationManager(id) },
 };
+
+window.showCompanyOrManage = async function() {
+  const companies = currentUser.companies || [];
+  if (companies.length === 1) {
+    currentCompanyId = companies[0].id;
+    showManageHub(companies[0].name, false);
+  } else if (companies.length > 1) {
+    showScreen('screen-company-select');
+    const list = document.getElementById('company-select-list');
+    list.innerHTML = companies.map(c => `
+      <div class="card" style="cursor:pointer" onclick="selectCompany(${c.id}, '${escHtml(c.name)}')">
+        <div class="card-title">${escHtml(c.name)}</div>
+      </div>
+    `).join('');
+  } else {
+    showScreen('screen-manage');
+  }
+};
+
+window.selectCompany = function(id, name) {
+  currentCompanyId = id;
+  showManageHub(name, true);
+};
+
+function showManageHub(companyName, backToSelect) {
+  document.getElementById('manage-company-name').textContent = companyName;
+  document.getElementById('btn-manage-back').onclick = backToSelect
+    ? () => showScreen('screen-company-select')
+    : () => showScreen('screen-tickets');
+  showScreen('screen-manage');
+}
 
 window.showManageSection = async function(type) {
   currentManageType = type;
@@ -925,7 +962,7 @@ window.showAddStaff = async function() {
 
   if (currentManageType === 'station_manager') {
     try {
-      const stations = await api.getManageStations();
+      const stations = await api.getManageStations(currentCompanyId);
       const select = document.getElementById('add-staff-station');
       select.innerHTML = stations.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
       stationField.style.display = '';
@@ -933,10 +970,6 @@ window.showAddStaff = async function() {
       tgAlert('Could not load stations: ' + e.message);
       return;
     }
-  } else if (currentUser.companies && currentUser.companies.length > 1) {
-    const select = document.getElementById('add-staff-company');
-    select.innerHTML = currentUser.companies.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
-    companyField.style.display = '';
   }
 
   showScreen('screen-add-staff');
@@ -957,11 +990,8 @@ window.submitAddStaff = async function() {
 
   if (currentManageType === 'station_manager') {
     data.station_id = document.getElementById('add-staff-station').value;
-  } else {
-    const companyField = document.getElementById('add-staff-company-field');
-    if (companyField.style.display !== 'none') {
-      data.company_id = document.getElementById('add-staff-company').value;
-    }
+  } else if (currentCompanyId) {
+    data.company_id = currentCompanyId;
   }
 
   try {

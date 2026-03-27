@@ -65,19 +65,19 @@ export const api = {
   getMyCompanies: () => request('GET', '/my-companies/'),
 
   // IT Manager: manage staff
-  getManageITWorkers: () => request('GET', '/manage/it-workers/'),
+  getManageITWorkers: (companyId) => request('GET', companyId ? `/manage/it-workers/?company_id=${companyId}` : '/manage/it-workers/'),
   addManageITWorker: (data) => request('POST', '/manage/it-workers/', data),
   removeManageITWorker: (id) => request('DELETE', `/manage/it-workers/${id}/`),
 
-  getManageSupplyWorkers: () => request('GET', '/manage/supply-workers/'),
+  getManageSupplyWorkers: (companyId) => request('GET', companyId ? `/manage/supply-workers/?company_id=${companyId}` : '/manage/supply-workers/'),
   addManageSupplyWorker: (data) => request('POST', '/manage/supply-workers/', data),
   removeManageSupplyWorker: (id) => request('DELETE', `/manage/supply-workers/${id}/`),
 
-  getManageStationManagers: () => request('GET', '/manage/station-managers/'),
+  getManageStationManagers: (companyId) => request('GET', companyId ? `/manage/station-managers/?company_id=${companyId}` : '/manage/station-managers/'),
   addManageStationManager: (data) => request('POST', '/manage/station-managers/', data),
   removeManageStationManager: (id) => request('DELETE', `/manage/station-managers/${id}/`),
 
-  getManageStations: () => request('GET', '/manage/stations/'),
+  getManageStations: (companyId) => request('GET', companyId ? `/manage/stations/?company_id=${companyId}` : '/manage/stations/'),
   resolveTicket: (id) => request('POST', `/tickets/${id}/resolve/`),
   rateTicket: (id, rating) => request('POST', `/tickets/${id}/rate/`, { rating }),
 

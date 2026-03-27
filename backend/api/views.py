@@ -393,6 +393,9 @@ class ManageITWorkersView(APIView):
 
     def get(self, request):
         companies = request.user.companies.all()
+        company_id = request.query_params.get('company_id')
+        if company_id:
+            companies = companies.filter(pk=company_id)
         qs = User.objects.filter(role=User.Role.IT_WORKER, companies__in=companies).distinct()
         return Response([{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active} for u in qs])
 
@@ -426,6 +429,9 @@ class ManageSupplyWorkersView(APIView):
 
     def get(self, request):
         companies = request.user.companies.all()
+        company_id = request.query_params.get('company_id')
+        if company_id:
+            companies = companies.filter(pk=company_id)
         qs = User.objects.filter(role=User.Role.SUPPLY_WORKER, companies__in=companies).distinct()
         return Response([{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active} for u in qs])
 
@@ -458,7 +464,12 @@ class ManageStationManagersView(APIView):
 
     def get(self, request):
         from django.db.models import Q
-        station_ids = self._company_station_ids(request.user)
+        from users.models import Station
+        companies = request.user.companies.all()
+        company_id = request.query_params.get('company_id')
+        if company_id:
+            companies = companies.filter(pk=company_id)
+        station_ids = Station.objects.filter(company__in=companies).values_list('id', flat=True)
         qs = User.objects.filter(
             role=User.Role.STATION_MANAGER
         ).filter(
@@ -563,7 +574,11 @@ class ManageCompanyStationsView(APIView):
 
     def get(self, request):
         from users.models import Station
-        stations = Station.objects.filter(company__in=request.user.companies.all())
+        companies = request.user.companies.all()
+        company_id = request.query_params.get('company_id')
+        if company_id:
+            companies = companies.filter(pk=company_id)
+        stations = Station.objects.filter(company__in=companies)
         return Response([{'id': s.id, 'name': s.name} for s in stations])
 
 

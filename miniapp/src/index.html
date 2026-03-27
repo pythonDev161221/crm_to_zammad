@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Tech Support</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=8">
+  <link rel="stylesheet" href="/static/style.css?v=10">
 </head>
 <body>
 <div id="app">
@@ -63,7 +63,7 @@
     <div class="header">
       <h1>My Tickets</h1>
       <button id="btn-station" class="back-btn" onclick="showStationOrSelect()" style="display:none">Station &#9881;</button>
-      <button id="btn-manage" class="back-btn" onclick="showScreen('screen-manage')" style="display:none">Staff &#9881;</button>
+      <button id="btn-manage" class="back-btn" onclick="showCompanyOrManage()" style="display:none">Staff &#9881;</button>
       <button class="back-btn" onclick="showProfile()" title="Profile">&#128100;</button>
     </div>
     <div id="tickets-list" class="card-list"></div>
@@ -249,17 +249,26 @@
     </div>
   </div>
 
+  <!-- Company Select (multi-company IT managers/deputies) -->
+  <div id="screen-company-select" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <h1>Select Company</h1>
+    </div>
+    <div id="company-select-list" class="card-list"></div>
+  </div>
+
   <!-- IT Manager: Staff Management Hub -->
   <div id="screen-manage" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
-      <h1>Manage Staff</h1>
+      <button id="btn-manage-back" class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <h1 id="manage-company-name">Manage Staff</h1>
     </div>
     <div class="card-list">
-      <div class="card" onclick="showManageSection('it_worker')">
+      <div id="manage-card-it-worker" class="card" onclick="showManageSection('it_worker')">
         <div class="card-title">IT Workers</div>
       </div>
-      <div class="card" onclick="showManageSection('supply_worker')">
+      <div id="manage-card-supply-worker" class="card" onclick="showManageSection('supply_worker')">
         <div class="card-title">Supply Workers</div>
       </div>
       <div class="card" onclick="showManageSection('station_manager')">
@@ -385,6 +394,6 @@
   </div>
 
 </div>
-<script type="module" src="/static/app.js?v=8"></script>
+<script type="module" src="/static/app.js?v=10"></script>
 </body>
 </html>
