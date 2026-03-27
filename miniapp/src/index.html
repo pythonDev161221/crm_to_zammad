@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Tech Support</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=11">
+  <link rel="stylesheet" href="/static/style.css?v=20">
 </head>
 <body>
 <div id="app">
@@ -24,7 +24,10 @@
       <p style="color:var(--text-secondary);margin-bottom:16px;font-size:14px">
         You were invited to join a station. Enter your name to create your account.
       </p>
-      <input type="hidden" id="register-token">
+      <div class="field" id="register-token-field" style="display:none">
+        <label>Invite Token *</label>
+        <input id="register-token" type="text" placeholder="Paste token from the invite link">
+      </div>
       <div class="field">
         <label>First Name *</label>
         <input id="register-first" type="text" placeholder="Ivan" autocomplete="given-name">
@@ -55,6 +58,10 @@
         <input id="link-password" type="password" placeholder="Your password" autocomplete="current-password">
       </div>
       <button class="btn btn-primary" onclick="submitLinkAccount()">Activate</button>
+      <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--secondary-bg)">
+        <p style="color:var(--text-secondary);font-size:14px;margin-bottom:12px">New worker with an invite link?</p>
+        <button class="btn btn-secondary" onclick="showRegisterFromLink()">Register via invite</button>
+      </div>
     </div>
   </div>
 
@@ -73,6 +80,7 @@
   <!-- Ticket Detail -->
   <div id="screen-ticket-detail" class="screen">
     <div class="header">
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1 id="ticket-detail-title">Ticket</h1>
     </div>
     <div id="ticket-detail-body"></div>
@@ -81,7 +89,7 @@
   <!-- Create Ticket -->
   <div id="screen-create-ticket" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1>New Request</h1>
     </div>
     <div class="form">
@@ -113,7 +121,7 @@
   <!-- Delegate Task -->
   <div id="screen-delegate" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-ticket-detail')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1>Delegate</h1>
     </div>
     <div class="form">
@@ -133,7 +141,7 @@
   <!-- Station Select (multi-station managers/deputies) -->
   <div id="screen-station-select" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1>Select Station</h1>
     </div>
     <div id="station-select-list" class="card-list"></div>
@@ -142,7 +150,7 @@
   <!-- Station Hub (manager/deputy) -->
   <div id="screen-station-hub" class="screen">
     <div class="header">
-      <button id="btn-station-hub-back" class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1 id="station-name">My Station</h1>
     </div>
     <div class="card-list">
@@ -158,7 +166,7 @@
   <!-- Station Workers (manager/deputy) -->
   <div id="screen-station-workers" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-station-hub')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1 id="station-workers-title">Workers</h1>
       <button id="btn-invite" class="back-btn" onclick="showInviteLink()" style="display:none">Invite</button>
     </div>
@@ -168,7 +176,7 @@
   <!-- Invite Link (station manager only) -->
   <div id="screen-station-invite" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-station-hub')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1>Invite Link</h1>
     </div>
     <div class="form">
@@ -197,7 +205,7 @@
   <!-- Station Deputies (manager only) -->
   <div id="screen-station-deputies" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-station-hub')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1>Deputies</h1>
     </div>
     <div id="station-deputies-list" class="card-list"></div>
@@ -207,7 +215,7 @@
   <!-- Add Deputy (promote existing worker) -->
   <div id="screen-add-deputy" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-station-deputies')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1>Promote to Deputy</h1>
     </div>
     <div class="form">
@@ -225,7 +233,7 @@
   <!-- Add Worker -->
   <div id="screen-add-worker" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-station-workers')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1>Add Worker</h1>
     </div>
     <div class="form">
@@ -252,7 +260,7 @@
   <!-- Company Select (multi-company IT managers/deputies) -->
   <div id="screen-company-select" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1>Select Company</h1>
     </div>
     <div id="company-select-list" class="card-list"></div>
@@ -261,7 +269,7 @@
   <!-- IT Manager: Staff Management Hub -->
   <div id="screen-manage" class="screen">
     <div class="header">
-      <button id="btn-manage-back" class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1 id="manage-company-name">Manage Staff</h1>
     </div>
     <div class="card-list">
@@ -280,7 +288,7 @@
   <!-- Staff List -->
   <div id="screen-manage-staff" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-manage')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1 id="manage-staff-title">Staff</h1>
     </div>
     <div id="manage-staff-list" class="card-list"></div>
@@ -290,7 +298,7 @@
   <!-- Add Staff Form -->
   <div id="screen-add-staff" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-manage-staff')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1 id="add-staff-title">Add Staff</h1>
     </div>
     <div class="form">
@@ -325,7 +333,7 @@
   <!-- Rate Ticket -->
   <div id="screen-rate-ticket" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1>Rate Resolution</h1>
     </div>
     <div class="form">
@@ -349,7 +357,7 @@
   <!-- Profile -->
   <div id="screen-profile" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1>Profile</h1>
     </div>
     <div class="form">
@@ -373,7 +381,7 @@
   <!-- Change Password -->
   <div id="screen-change-password" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-profile')">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1>Change Password</h1>
     </div>
     <div class="form">
@@ -394,6 +402,6 @@
   </div>
 
 </div>
-<script type="module" src="/static/app.js?v=11"></script>
+<script type="module" src="/static/app.js?v=20"></script>
 </body>
 </html>

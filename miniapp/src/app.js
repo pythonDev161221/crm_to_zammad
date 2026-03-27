@@ -1,4 +1,4 @@
-import { api, setToken } from '/static/api.js?v=11';
+import { api, setToken } from '/static/api.js?v=17';
 
 const tg = window.Telegram?.WebApp;
 const inTelegram = !!(tg?.initData);
@@ -12,7 +12,7 @@ function tgConfirm(msg) {
 }
 
 let currentUser = null;
-let previousScreen = 'screen-tickets';
+let screenHistory = [];
 let currentStationId = null;
 let stationManagerStations = [];
 
@@ -20,17 +20,39 @@ let stationManagerStations = [];
 
 window.showScreen = function(id) {
   const current = document.querySelector('.screen.active');
-  if (current && current.id !== id) previousScreen = current.id;
+  const currentId = current?.id;
+  if (currentId && currentId !== id) screenHistory.push(currentId);
+  if (id === 'screen-tickets') screenHistory = [];
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const screen = document.getElementById(id);
   if (screen) screen.classList.add('active');
-  if (inTelegram) tg.BackButton[id === 'screen-tickets' ? 'hide' : 'show']();
+  if (inTelegram) {
+    if (screenHistory.length > 0) tg.BackButton.show();
+    else tg.BackButton.hide();
+  }
+}
+
+window.goBack = function() {
+  if (screenHistory.length === 0) return;
+  const prev = screenHistory.pop();
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const screen = document.getElementById(prev);
+  if (screen) screen.classList.add('active');
+  if (inTelegram) {
+    if (screenHistory.length > 0) tg.BackButton.show();
+    else tg.BackButton.hide();
+  }
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 async function init() {
-  if (inTelegram) { tg.ready(); tg.expand(); tg.BackButton.onClick(() => showScreen(previousScreen)); }
+  if (inTelegram) {
+    tg.ready();
+    tg.expand();
+    tg.BackButton.hide();
+    tg.BackButton.onClick(goBack);
+  }
 
   showScreen('screen-loading');
 
@@ -54,7 +76,11 @@ async function init() {
     }
 
     // Check for invite link (startapp=inv_TOKEN)
-    const startParam = tg?.initDataUnsafe?.start_param || '';
+    // Try all possible locations Telegram may place start_param
+    const startParam = tg?.initDataUnsafe?.start_param
+      || new URLSearchParams(initData).get('start_param')
+      || new URLSearchParams(window.location.hash.slice(1)).get('tgWebAppStartParam')
+      || '';
     if (startParam.startsWith('inv_')) {
       const inviteToken = startParam.slice(4);
       // Check if already registered
@@ -91,11 +117,24 @@ async function init() {
   }
 }
 
+window.showRegisterFromLink = function() {
+  document.getElementById('register-token-field').style.display = '';
+  document.getElementById('register-token').value = '';
+  document.getElementById('register-first').value = '';
+  document.getElementById('register-last').value = '';
+  showScreen('screen-register');
+};
+
 window.submitRegister = async function() {
-  const token = document.getElementById('register-token').value;
+  const tokenInput = document.getElementById('register-token').value.trim();
+  // Support full invite URL or just the token
+  const token = tokenInput.includes('inv_')
+    ? tokenInput.split('inv_').pop().split(/[^a-zA-Z0-9_-]/)[0]
+    : tokenInput;
   const first_name = document.getElementById('register-first').value.trim();
   const last_name = document.getElementById('register-last').value.trim();
 
+  if (!token) { tgAlert('Please enter the invite token.'); return; }
   if (!first_name) { tgAlert('Please enter your first name.'); return; }
 
   const initData = tg?.initData || '';
@@ -650,7 +689,7 @@ window.showStationOrSelect = async function() {
     stationManagerStations = stations;
     if (stations.length === 1) {
       currentStationId = stations[0].id;
-      showStationHub(stations[0].name, false);
+      showStationHub(stations[0].name);
     } else {
       showScreen('screen-station-select');
       const list = document.getElementById('station-select-list');
@@ -667,15 +706,11 @@ window.showStationOrSelect = async function() {
 
 window.selectStation = function(id, name) {
   currentStationId = id;
-  showStationHub(name, true);
+  showStationHub(name);
 };
 
-function showStationHub(name, backToSelect) {
+function showStationHub(name) {
   document.getElementById('station-name').textContent = name;
-  document.getElementById('btn-station-hub-back').onclick = backToSelect
-    ? () => showScreen('screen-station-select')
-    : () => showScreen('screen-tickets');
-  // Deputies card only for station_manager (not deputy role)
   const isManager = currentUser.role === 'station_manager';
   document.getElementById('hub-deputies-card').style.display = isManager ? '' : 'none';
   showScreen('screen-station-hub');
@@ -887,7 +922,7 @@ window.showCompanyOrManage = async function() {
   const companies = currentUser.companies || [];
   if (companies.length === 1) {
     currentCompanyId = companies[0].id;
-    showManageHub(companies[0].name, false);
+    showManageHub(companies[0].name);
   } else if (companies.length > 1) {
     showScreen('screen-company-select');
     const list = document.getElementById('company-select-list');
@@ -903,14 +938,11 @@ window.showCompanyOrManage = async function() {
 
 window.selectCompany = function(id, name) {
   currentCompanyId = id;
-  showManageHub(name, true);
+  showManageHub(name);
 };
 
-function showManageHub(companyName, backToSelect) {
+function showManageHub(companyName) {
   document.getElementById('manage-company-name').textContent = companyName;
-  document.getElementById('btn-manage-back').onclick = backToSelect
-    ? () => showScreen('screen-company-select')
-    : () => showScreen('screen-tickets');
   showScreen('screen-manage');
 }
 
@@ -1003,7 +1035,7 @@ window.submitAddStaff = async function() {
   try {
     await MANAGE_CONFIG[currentManageType].apiAdd(data);
     tgAlert(`Account created for ${first_name || username}.`);
-    showScreen('screen-manage-staff');
+    goBack();
     await showManageSection(currentManageType);
   } catch (e) {
     tgAlert(e.message);
@@ -1071,7 +1103,7 @@ window.submitPromoteDeputy = async function() {
   try {
     await api.addStationDeputy({ worker_id: parseInt(workerId), station_id: currentStationId });
     tgAlert('Worker promoted to deputy.');
-    showScreen('screen-station-deputies');
+    goBack();
     await showStationDeputies();
   } catch (e) {
     tgAlert(e.message);
