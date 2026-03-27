@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Tech Support</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=22">
+  <link rel="stylesheet" href="/static/style.css?v=24">
 </head>
 <body>
 <div id="app">
@@ -16,55 +16,58 @@
   </div>
 
   <!-- Register via invite link -->
-  <div id="screen-register" class="screen">
-    <div class="header">
-      <h1>Join Station</h1>
-    </div>
-    <div class="form">
-      <p style="color:var(--text-secondary);margin-bottom:16px;font-size:14px">
-        You were invited to join a station. Enter your name to create your account.
-      </p>
-      <div class="field" id="register-token-field" style="display:none">
-        <label>Invite Token *</label>
-        <input id="register-token" type="text" placeholder="Paste token from the invite link">
-      </div>
-      <div class="field">
-        <label>First Name *</label>
-        <input id="register-first" type="text" placeholder="Ivan" autocomplete="given-name">
-      </div>
-      <div class="field">
-        <label>Last Name</label>
-        <input id="register-last" type="text" placeholder="Petrov" autocomplete="family-name">
-      </div>
-      <button class="btn btn-primary" onclick="submitRegister()">Create Account</button>
-    </div>
-  </div>
-
-  <!-- Link Account (fallback for existing accounts) -->
+  <!-- Activation / Registration -->
   <div id="screen-link-account" class="screen">
     <div class="header">
-      <h1>Activate Account</h1>
+      <h1>Welcome</h1>
     </div>
     <div class="form">
       <div id="link-account-inactive-notice" style="display:none;background:var(--secondary-bg);border-radius:8px;padding:12px;margin-bottom:16px;font-size:14px;color:var(--hint)">
         Your account has been deactivated. Ask your manager for a new invite link to rejoin.
       </div>
-      <p style="color:var(--text-secondary);margin-bottom:16px;font-size:14px">
-        Enter the username and password given to you by your station manager.
-      </p>
-      <div class="field">
-        <label>Username</label>
-        <input id="link-username" type="text" placeholder="your_username" autocomplete="username">
+
+      <!-- Accordion: Register via invite -->
+      <div class="card" style="margin-bottom:8px">
+        <div onclick="toggleAccordion('accordion-invite')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+          <div class="card-title">Register via invite</div>
+          <span id="accordion-invite-arrow" style="color:var(--hint);font-size:18px">&#8250;</span>
+        </div>
+        <div id="accordion-invite" style="display:none;margin-top:12px">
+          <div class="field" id="register-token-field">
+            <label>Invite Token *</label>
+            <input id="register-token" type="text" placeholder="Paste token or full invite link">
+          </div>
+          <div class="field">
+            <label>First Name *</label>
+            <input id="register-first" type="text" placeholder="Ivan" autocomplete="given-name">
+          </div>
+          <div class="field">
+            <label>Last Name</label>
+            <input id="register-last" type="text" placeholder="Petrov" autocomplete="family-name">
+          </div>
+          <button class="btn btn-primary" onclick="submitRegister()">Create Account</button>
+        </div>
       </div>
-      <div class="field">
-        <label>Password</label>
-        <input id="link-password" type="password" placeholder="Your password" autocomplete="current-password">
+
+      <!-- Accordion: Activate with username/password -->
+      <div class="card">
+        <div onclick="toggleAccordion('accordion-activate')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+          <div class="card-title">Activate with username / password</div>
+          <span id="accordion-activate-arrow" style="color:var(--hint);font-size:18px">&#8250;</span>
+        </div>
+        <div id="accordion-activate" style="display:none;margin-top:12px">
+          <div class="field">
+            <label>Username</label>
+            <input id="link-username" type="text" placeholder="your_username" autocomplete="username">
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input id="link-password" type="password" placeholder="Your password" autocomplete="current-password">
+          </div>
+          <button class="btn btn-primary" onclick="submitLinkAccount()">Activate</button>
+        </div>
       </div>
-      <button class="btn btn-primary" onclick="submitLinkAccount()">Activate</button>
-      <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--secondary-bg)">
-        <p style="color:var(--text-secondary);font-size:14px;margin-bottom:12px">New worker with an invite link?</p>
-        <button class="btn btn-secondary" onclick="showRegisterFromLink()">Register via invite</button>
-      </div>
+
     </div>
   </div>
 
@@ -422,6 +425,6 @@
   </div>
 
 </div>
-<script type="module" src="/static/app.js?v=22"></script>
+<script type="module" src="/static/app.js?v=24"></script>
 </body>
 </html>

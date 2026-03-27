@@ -44,6 +44,24 @@ window.goBack = function() {
   }
 }
 
+// ── Accordion ─────────────────────────────────────────────────────────────────
+
+function openAccordion(id) {
+  const body = document.getElementById(id);
+  const arrow = document.getElementById(id + '-arrow');
+  if (body) { body.style.display = ''; }
+  if (arrow) { arrow.innerHTML = '&#8964;'; }
+}
+
+window.toggleAccordion = function(id) {
+  const body = document.getElementById(id);
+  const arrow = document.getElementById(id + '-arrow');
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  if (arrow) arrow.innerHTML = open ? '&#8250;' : '&#8964;';
+};
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 async function init() {
@@ -92,12 +110,13 @@ async function init() {
         await loadTickets();
         return;
       }
-      // New user — show registration screen
+      // New user — show registration screen with invite panel open
       document.getElementById('register-token').value = inviteToken;
       const tgUser = tg?.initDataUnsafe?.user || {};
       document.getElementById('register-first').value = tgUser.first_name || '';
       document.getElementById('register-last').value = tgUser.last_name || '';
-      showScreen('screen-register');
+      showScreen('screen-link-account');
+      openAccordion('accordion-invite');
       return;
     }
 
@@ -122,11 +141,10 @@ async function init() {
 }
 
 window.showRegisterFromLink = function() {
-  document.getElementById('register-token-field').style.display = '';
   document.getElementById('register-token').value = '';
   document.getElementById('register-first').value = '';
   document.getElementById('register-last').value = '';
-  showScreen('screen-register');
+  openAccordion('accordion-invite');
 };
 
 window.submitRegister = async function() {
