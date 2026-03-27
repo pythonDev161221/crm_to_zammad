@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Tech Support</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=24">
+  <link rel="stylesheet" href="/static/style.css?v=25">
 </head>
 <body>
 <div id="app">
@@ -296,9 +296,31 @@
     <div class="header">
       <button class="back-btn" onclick="goBack()">&#8592; Back</button>
       <h1 id="manage-staff-title">Staff</h1>
+      <button id="btn-role-invite" class="back-btn" onclick="showRoleInvite()" style="display:none">Invite</button>
     </div>
     <div id="manage-staff-list" class="card-list"></div>
     <button class="fab" onclick="showAddStaff()">+</button>
+  </div>
+
+  <!-- Role Invite -->
+  <div id="screen-role-invite" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
+      <h1 id="role-invite-title">Invite via Link</h1>
+    </div>
+    <div class="form">
+      <div id="role-invite-station-field" class="field" style="display:none">
+        <label>Station *</label>
+        <select id="role-invite-station"></select>
+      </div>
+      <button class="btn btn-primary" onclick="generateRoleInvite()">Generate Invite Link</button>
+      <div id="role-invite-result" style="display:none;margin-top:16px">
+        <div style="font-size:12px;color:var(--hint);margin-bottom:6px">One-time invite link:</div>
+        <div id="role-invite-link" style="font-size:13px;word-break:break-all;background:var(--secondary-bg);padding:10px;border-radius:8px;margin-bottom:10px"></div>
+        <button class="btn btn-secondary" onclick="copyRoleInviteLink()">Copy Link</button>
+      </div>
+      <div id="role-invite-list" style="margin-top:24px"></div>
+    </div>
   </div>
 
   <!-- Add Staff Form -->
@@ -425,6 +447,6 @@
   </div>
 
 </div>
-<script type="module" src="/static/app.js?v=24"></script>
+<script type="module" src="/static/app.js?v=25"></script>
 </body>
 </html>

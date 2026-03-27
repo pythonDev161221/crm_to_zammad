@@ -113,6 +113,11 @@ export const api = {
   generateStationInvite: (stationId) => request('POST', '/station/invite/', stationId ? { station_id: stationId } : {}),
   deleteStationInvite: (stationId) => request('DELETE', `/station/invite/${stationId ? `?station_id=${stationId}` : ''}`),
 
+  // Role invites (IT manager)
+  getRoleInvites: (companyId) => request('GET', companyId ? `/manage/role-invite/?company_id=${companyId}` : '/manage/role-invite/'),
+  createRoleInvite: (data) => request('POST', '/manage/role-invite/', data),
+  deleteRoleInvite: (id) => request('DELETE', `/manage/role-invite/${id}/`),
+
   // Password change
   changePassword: (old_password, new_password) =>
     request('POST', '/auth/change-password/', { old_password, new_password }),

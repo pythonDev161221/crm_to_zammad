@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from users.models import User, StationInvite
+from users.models import User, StationInvite, RoleInvite
 
 
 def verify_telegram_init_data(init_data: str) -> dict | None:
@@ -135,40 +135,62 @@ class RegisterView(APIView):
         if existing and existing.is_active:
             return Response({'detail': 'This Telegram account is already registered.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            invite = StationInvite.objects.select_related('station').get(token=token, is_active=True)
-        except StationInvite.DoesNotExist:
+        # Try StationInvite first, then RoleInvite
+        station_invite = StationInvite.objects.select_related('station').filter(token=token, is_active=True).first()
+        role_invite = None
+        if not station_invite:
+            role_invite = RoleInvite.objects.select_related('company', 'station').filter(token=token, is_used=False).first()
+        if not station_invite and not role_invite:
             return Response({'detail': 'Invalid or expired invite link.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if existing and not existing.is_active:
-            # Re-activate the old account with new station from invite
-            existing.is_active = True
-            existing.station = invite.station
-            existing.role = User.Role.WORKER
-            if first_name:
-                existing.first_name = first_name
-            if last_name:
-                existing.last_name = last_name
-            existing.save(update_fields=['is_active', 'station', 'role', 'first_name', 'last_name'])
-            worker = existing
-        else:
+        def _make_username(user_data):
             tg_username = user_data.get('username', '')
-            base_username = tg_username or f'user_{telegram_id}'
-            username = base_username
+            base = tg_username or f'user_{user_data["id"]}'
+            username = base
             counter = 1
             while User.objects.filter(username=username).exists():
-                username = f'{base_username}_{counter}'
+                username = f'{base}_{counter}'
                 counter += 1
+            return username
 
+        if station_invite:
+            if existing and not existing.is_active:
+                existing.is_active = True
+                existing.station = station_invite.station
+                existing.role = User.Role.WORKER
+                if first_name:
+                    existing.first_name = first_name
+                if last_name:
+                    existing.last_name = last_name
+                existing.save(update_fields=['is_active', 'station', 'role', 'first_name', 'last_name'])
+                worker = existing
+            else:
+                worker = User.objects.create_user(
+                    username=_make_username(user_data),
+                    password=None,
+                    first_name=first_name or user_data.get('first_name', ''),
+                    last_name=last_name or user_data.get('last_name', ''),
+                    role=User.Role.WORKER,
+                    station=station_invite.station,
+                    telegram_id=telegram_id,
+                )
+        else:
+            # RoleInvite
+            role = role_invite.role
             worker = User.objects.create_user(
-                username=username,
+                username=_make_username(user_data),
                 password=None,
                 first_name=first_name or user_data.get('first_name', ''),
                 last_name=last_name or user_data.get('last_name', ''),
-                role=User.Role.WORKER,
-                station=invite.station,
+                role=role,
                 telegram_id=telegram_id,
             )
+            worker.companies.add(role_invite.company)
+            if role == RoleInvite.Role.STATION_MANAGER and role_invite.station:
+                role_invite.station.manager = worker
+                role_invite.station.save(update_fields=['manager'])
+            role_invite.is_used = True
+            role_invite.save(update_fields=['is_used'])
 
         refresh = RefreshToken.for_user(worker)
         return Response({

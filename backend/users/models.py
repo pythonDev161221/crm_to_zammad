@@ -75,3 +75,31 @@ class StationInvite(models.Model):
 
     def __str__(self):
         return f'Invite for {self.station} (active={self.is_active})'
+
+
+class RoleInvite(models.Model):
+    class Role(models.TextChoices):
+        IT_WORKER = 'it_worker', 'IT Worker'
+        SUPPLY_WORKER = 'supply_worker', 'Supply Worker'
+        STATION_MANAGER = 'station_manager', 'Station Manager'
+
+    token = models.CharField(max_length=64, unique=True)
+    role = models.CharField(max_length=20, choices=Role.choices)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='role_invites')
+    station = models.ForeignKey(Station, on_delete=models.SET_NULL, null=True, blank=True, related_name='role_invites')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_role_invites')
+    is_used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @classmethod
+    def create(cls, role, company, created_by, station=None):
+        return cls.objects.create(
+            token=secrets.token_urlsafe(32),
+            role=role,
+            company=company,
+            station=station,
+            created_by=created_by,
+        )
+
+    def __str__(self):
+        return f'RoleInvite {self.role} @ {self.company} (used={self.is_used})'

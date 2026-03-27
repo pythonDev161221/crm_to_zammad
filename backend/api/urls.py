@@ -43,6 +43,8 @@ urlpatterns = [
     path('manage/stations/', views.ManageCompanyStationsView.as_view(), name='manage-stations'),
     path('manage/it-deputies/', views.ManageITDeputiesView.as_view(), name='manage-it-deputies'),
     path('manage/it-deputies/<int:pk>/', views.ManageITDeputyDemoteView.as_view(), name='manage-it-deputy-demote'),
+    path('manage/role-invite/', views.RoleInviteView.as_view(), name='role-invite'),
+    path('manage/role-invite/<int:pk>/', views.RoleInviteView.as_view(), name='role-invite-delete'),
 
     # Change password
     path('auth/change-password/', views.ChangePasswordView.as_view(), name='change-password'),

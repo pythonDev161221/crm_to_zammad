@@ -582,6 +582,56 @@ class ManageCompanyStationsView(APIView):
         return Response([{'id': s.id, 'name': s.name} for s in stations])
 
 
+class RoleInviteView(APIView):
+    permission_classes = [IsAuthenticated, IsITManager]
+
+    def get(self, request):
+        from users.models import RoleInvite
+        companies = request.user.companies.all()
+        invites = RoleInvite.objects.filter(company__in=companies, is_used=False).select_related('company', 'station')
+        return Response([{
+            'id': i.id,
+            'role': i.role,
+            'company_id': i.company_id,
+            'company_name': i.company.name,
+            'station_id': i.station_id,
+            'station_name': i.station.name if i.station else None,
+            'token': i.token,
+        } for i in invites])
+
+    def post(self, request):
+        from users.models import RoleInvite, Station
+        from rest_framework.exceptions import ValidationError
+        role = request.data.get('role', '').strip()
+        if role not in (RoleInvite.Role.IT_WORKER, RoleInvite.Role.SUPPLY_WORKER, RoleInvite.Role.STATION_MANAGER):
+            raise ValidationError({'role': 'Invalid role.'})
+        company = _resolve_manage_company(request.user, request.data.get('company_id'))
+        station = None
+        if role == RoleInvite.Role.STATION_MANAGER:
+            station_id = request.data.get('station_id')
+            if not station_id:
+                raise ValidationError({'station_id': 'Station required for station manager invite.'})
+            try:
+                station = Station.objects.get(pk=station_id, company=company)
+            except Station.DoesNotExist:
+                raise ValidationError({'station_id': 'Station not found in your company.'})
+        invite = RoleInvite.create(role=role, company=company, created_by=request.user, station=station)
+        from django.conf import settings
+        bot = getattr(settings, 'TELEGRAM_BOT_USERNAME', '')
+        link = f'https://t.me/{bot}?startapp=inv_{invite.token}' if bot else ''
+        return Response({'token': invite.token, 'link': link}, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, pk):
+        from users.models import RoleInvite
+        companies = request.user.companies.all()
+        try:
+            invite = RoleInvite.objects.get(pk=pk, company__in=companies, is_used=False)
+        except RoleInvite.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        invite.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class StationDeputiesView(APIView):
     permission_classes = [IsAuthenticated, IsStationManager]  # primary manager only
 

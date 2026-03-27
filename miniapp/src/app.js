@@ -1003,6 +1003,9 @@ window.showManageSection = async function(type) {
   currentManageType = type;
   const cfg = MANAGE_CONFIG[type];
   document.getElementById('manage-staff-title').textContent = cfg.title;
+  // Show Invite button for roles that support role invites
+  const inviteBtn = document.getElementById('btn-role-invite');
+  if (inviteBtn) inviteBtn.style.display = ['it_worker', 'supply_worker', 'station_manager'].includes(type) ? '' : 'none';
   showScreen('screen-manage-staff');
 
   const list = document.getElementById('manage-staff-list');
@@ -1090,6 +1093,93 @@ window.submitAddStaff = async function() {
     tgAlert(`Account created for ${first_name || username}.`);
     goBack();
     await showManageSection(currentManageType);
+  } catch (e) {
+    tgAlert(e.message);
+  }
+};
+
+// ── Role Invite ───────────────────────────────────────────────────────────────
+
+let currentRoleInviteLink = '';
+
+window.showRoleInvite = async function() {
+  const roleLabels = { it_worker: 'IT Worker', supply_worker: 'Supply Worker', station_manager: 'Station Manager' };
+  document.getElementById('role-invite-title').textContent = `Invite ${roleLabels[currentManageType] || ''}`;
+  document.getElementById('role-invite-result').style.display = 'none';
+  currentRoleInviteLink = '';
+
+  const stationField = document.getElementById('role-invite-station-field');
+  const stationSelect = document.getElementById('role-invite-station');
+  if (currentManageType === 'station_manager') {
+    stationField.style.display = '';
+    stationSelect.innerHTML = '<option value="">Loading...</option>';
+    try {
+      const stations = await api.getManageStations(currentCompanyId);
+      stationSelect.innerHTML = stations.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+    } catch (e) {
+      stationSelect.innerHTML = '<option value="">Error loading stations</option>';
+    }
+  } else {
+    stationField.style.display = 'none';
+  }
+
+  // Load existing unused invites
+  await loadRoleInviteList();
+  showScreen('screen-role-invite');
+};
+
+async function loadRoleInviteList() {
+  const listEl = document.getElementById('role-invite-list');
+  try {
+    const invites = await api.getRoleInvites(currentCompanyId);
+    const filtered = invites.filter(i => i.role === currentManageType);
+    if (!filtered.length) { listEl.innerHTML = ''; return; }
+    listEl.innerHTML = '<div style="font-size:12px;color:var(--hint);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Unused links</div>' +
+      filtered.map(i => `
+        <div class="card" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:13px;color:var(--hint);word-break:break-all;flex:1;margin-right:8px">${i.station_name ? escHtml(i.station_name) + ' · ' : ''}...${escHtml(i.token.slice(-8))}</div>
+          <button class="btn btn-danger" style="width:auto;padding:4px 10px;font-size:12px;flex-shrink:0" onclick="deleteRoleInvite(${i.id})">Delete</button>
+        </div>
+      `).join('');
+  } catch (e) {
+    listEl.innerHTML = '';
+  }
+}
+
+window.generateRoleInvite = async function() {
+  const data = { role: currentManageType };
+  if (currentCompanyId) data.company_id = currentCompanyId;
+  if (currentManageType === 'station_manager') {
+    const stationId = document.getElementById('role-invite-station').value;
+    if (!stationId) { tgAlert('Please select a station.'); return; }
+    data.station_id = stationId;
+  }
+  try {
+    const res = await api.createRoleInvite(data);
+    currentRoleInviteLink = res.link || `inv_${res.token}`;
+    document.getElementById('role-invite-link').textContent = currentRoleInviteLink;
+    document.getElementById('role-invite-result').style.display = '';
+    await loadRoleInviteList();
+  } catch (e) {
+    tgAlert(e.message);
+  }
+};
+
+window.copyRoleInviteLink = function() {
+  if (!currentRoleInviteLink) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(currentRoleInviteLink).then(() => tgAlert('Link copied!'));
+  } else {
+    tgAlert(currentRoleInviteLink);
+  }
+};
+
+window.deleteRoleInvite = async function(id) {
+  const confirmed = await tgConfirm('Delete this invite link?');
+  if (!confirmed) return;
+  try {
+    await api.deleteRoleInvite(id);
+    await loadRoleInviteList();
   } catch (e) {
     tgAlert(e.message);
   }
