@@ -277,7 +277,11 @@ class StationWorkersView(APIView):
         stations = self._get_stations(request.user)
         if not stations:
             return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
-        station_ids = [s.id for s in stations]
+        station_id = request.query_params.get('station_id')
+        if station_id:
+            station_ids = [s.id for s in stations if s.id == int(station_id)]
+        else:
+            station_ids = [s.id for s in stations]
         workers = User.objects.filter(station_id__in=station_ids, role=User.Role.WORKER)
         data = [{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active, 'station': u.station.name if u.station else None} for u in workers]
         return Response(data)
@@ -574,7 +578,11 @@ class StationDeputiesView(APIView):
         stations = self._primary_stations(request.user)
         if not stations:
             return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
-        station_ids = [s.id for s in stations]
+        station_id = request.query_params.get('station_id')
+        if station_id:
+            station_ids = [s.id for s in stations if s.id == int(station_id)]
+        else:
+            station_ids = [s.id for s in stations]
         deputies = User.objects.filter(role=User.Role.DEPUTY, deputy_stations__id__in=station_ids).distinct()
         return Response([{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active} for u in deputies])
 
@@ -638,8 +646,14 @@ class StationDeputyDeleteView(APIView):
             return Response({'detail': 'Deputy not found in your stations.'}, status=status.HTTP_404_NOT_FOUND)
         for station in stations:
             station.deputies.remove(deputy)
-        deputy.is_active = False
-        deputy.save(update_fields=['is_active'])
+        station_id = request.query_params.get('station_id')
+        if station_id:
+            demote_station = next((s for s in stations if s.id == int(station_id)), stations[0])
+        else:
+            demote_station = stations[0]
+        deputy.role = User.Role.WORKER
+        deputy.station = demote_station
+        deputy.save(update_fields=['role', 'station'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

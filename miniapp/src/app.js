@@ -1,4 +1,4 @@
-import { api, setToken } from '/static/api.js?v=5';
+import { api, setToken } from '/static/api.js?v=8';
 
 const tg = window.Telegram?.WebApp;
 const inTelegram = !!(tg?.initData);
@@ -13,6 +13,8 @@ function tgConfirm(msg) {
 
 let currentUser = null;
 let previousScreen = 'screen-tickets';
+let currentStationId = null;
+let stationManagerStations = [];
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
@@ -629,13 +631,50 @@ function showError(msg) {
   </div>`;
 }
 
+// ── Station Select ────────────────────────────────────────────────────────────
+
+window.showStationOrSelect = async function() {
+  try {
+    const stations = await api.getMyStations();
+    stationManagerStations = stations;
+    if (stations.length === 1) {
+      currentStationId = stations[0].id;
+      showStationHub(stations[0].name, false);
+    } else {
+      showScreen('screen-station-select');
+      const list = document.getElementById('station-select-list');
+      list.innerHTML = stations.map(s => `
+        <div class="card" style="cursor:pointer" onclick="selectStation(${s.id}, '${escHtml(s.name)}')">
+          <div class="card-title">${escHtml(s.name)}</div>
+        </div>
+      `).join('');
+    }
+  } catch (e) {
+    tgAlert('Error: ' + e.message);
+  }
+};
+
+window.selectStation = function(id, name) {
+  currentStationId = id;
+  showStationHub(name, true);
+};
+
+function showStationHub(name, backToSelect) {
+  document.getElementById('station-name').textContent = name;
+  document.getElementById('btn-station-hub-back').onclick = backToSelect
+    ? () => showScreen('screen-station-select')
+    : () => showScreen('screen-tickets');
+  // Deputies card only for station_manager (not deputy role)
+  const isManager = currentUser.role === 'station_manager';
+  document.getElementById('hub-deputies-card').style.display = isManager ? '' : 'none';
+  showScreen('screen-station-hub');
+}
+
 // ── Station Workers ───────────────────────────────────────────────────────────
 
 window.showStationWorkers = async function() {
   showScreen('screen-station-workers');
   const isManager = currentUser.role === 'station_manager';
-  const btnDeputies = document.getElementById('btn-deputies');
-  if (btnDeputies) btnDeputies.style.display = isManager ? 'inline' : 'none';
   const btnInvite = document.getElementById('btn-invite');
   if (btnInvite) btnInvite.style.display = isManager ? 'inline' : 'none';
 
@@ -643,7 +682,7 @@ window.showStationWorkers = async function() {
   list.innerHTML = '<div class="loading">Loading...</div>';
 
   try {
-    const workers = await api.getStationWorkers();
+    const workers = await api.getStationWorkers(currentStationId);
     if (!workers.length) {
       list.innerHTML = '<div class="empty">No workers yet. Share the invite link to add workers.</div>';
       return;
@@ -671,7 +710,7 @@ window.promoteToDeputy = async function(id, name) {
   const confirmed = await tgConfirm(`Promote ${name} to deputy?`);
   if (!confirmed) return;
   try {
-    await api.addStationDeputy({ worker_id: id });
+    await api.addStationDeputy({ worker_id: id, station_id: currentStationId });
     tgAlert(`${name} is now a deputy.`);
     await showStationWorkers();
   } catch (e) {
@@ -943,7 +982,7 @@ window.showStationDeputies = async function() {
   list.innerHTML = '<div class="loading">Loading...</div>';
 
   try {
-    const deputies = await api.getStationDeputies();
+    const deputies = await api.getStationDeputies(currentStationId);
     if (!deputies.length) {
       list.innerHTML = '<div class="empty">No deputies yet.</div>';
       return;
@@ -952,9 +991,9 @@ window.showStationDeputies = async function() {
       <div class="card" style="display:flex;align-items:center;justify-content:space-between">
         <div>
           <div class="card-title">${escHtml(d.name)}</div>
-          <div class="card-meta">@${escHtml(d.username)} · ${d.is_active ? 'Active' : '<span style="color:#dc3545">Deactivated</span>'}</div>
+          <div class="card-meta">@${escHtml(d.username)}</div>
         </div>
-        ${d.is_active ? `<button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeDeputy(${d.id}, '${escHtml(d.name)}')">Remove</button>` : ''}
+        <button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:13px" onclick="demoteToWorker(${d.id}, '${escHtml(d.name)}')">Worker</button>
       </div>
     `).join('');
   } catch (e) {
@@ -962,11 +1001,11 @@ window.showStationDeputies = async function() {
   }
 };
 
-window.removeDeputy = async function(id, name) {
-  const confirmed = await tgConfirm(`Remove deputy ${name}? They will become a regular worker.`);
+window.demoteToWorker = async function(id, name) {
+  const confirmed = await tgConfirm(`Demote ${name} back to worker?`);
   if (!confirmed) return;
   try {
-    await api.removeStationDeputy(id);
+    await api.removeStationDeputy(id, currentStationId);
     await showStationDeputies();
   } catch (e) {
     tgAlert(e.message);
@@ -975,7 +1014,7 @@ window.removeDeputy = async function(id, name) {
 
 window.showAddDeputy = async function() {
   try {
-    const workers = await api.getStationWorkers();
+    const workers = await api.getStationWorkers(currentStationId);
     const active = workers.filter(w => w.is_active);
     const select = document.getElementById('deputy-worker-select');
     if (!active.length) {
@@ -994,7 +1033,7 @@ window.submitPromoteDeputy = async function() {
   const workerId = document.getElementById('deputy-worker-select').value;
   if (!workerId) { tgAlert('Please select a worker.'); return; }
   try {
-    await api.addStationDeputy({ worker_id: parseInt(workerId) });
+    await api.addStationDeputy({ worker_id: parseInt(workerId), station_id: currentStationId });
     tgAlert('Worker promoted to deputy.');
     showScreen('screen-station-deputies');
     await showStationDeputies();

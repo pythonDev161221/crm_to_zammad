@@ -98,14 +98,14 @@ export const api = {
   getITWorkers: (ticketId) => request('GET', `/it-workers/${ticketId ? `?ticket_id=${ticketId}` : ''}`),
 
   // Station management
-  getStationWorkers: () => request('GET', '/station/workers/'),
+  getStationWorkers: (stationId) => request('GET', stationId ? `/station/workers/?station_id=${stationId}` : '/station/workers/'),
   createStationWorker: (data) => request('POST', '/station/workers/', data),
   removeStationWorker: (id) => request('DELETE', `/station/workers/${id}/`),
 
   // Deputy management (station manager only)
-  getStationDeputies: () => request('GET', '/station/deputies/'),
+  getStationDeputies: (stationId) => request('GET', stationId ? `/station/deputies/?station_id=${stationId}` : '/station/deputies/'),
   addStationDeputy: (data) => request('POST', '/station/deputies/', data),
-  removeStationDeputy: (id) => request('DELETE', `/station/deputies/${id}/`),
+  removeStationDeputy: (id, stationId) => request('DELETE', `/station/deputies/${id}/${stationId ? `?station_id=${stationId}` : ''}`),
 
   // Invite link (station manager only)
   getStationInvite: (stationId) => request('GET', `/station/invite/${stationId ? `?station_id=${stationId}` : ''}`),

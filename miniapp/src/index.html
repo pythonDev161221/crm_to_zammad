@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Tech Support</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=5">
+  <link rel="stylesheet" href="/static/style.css?v=8">
 </head>
 <body>
 <div id="app">
@@ -62,7 +62,7 @@
   <div id="screen-tickets" class="screen">
     <div class="header">
       <h1>My Tickets</h1>
-      <button id="btn-station" class="back-btn" onclick="showStationWorkers()" style="display:none">Station &#9881;</button>
+      <button id="btn-station" class="back-btn" onclick="showStationOrSelect()" style="display:none">Station &#9881;</button>
       <button id="btn-manage" class="back-btn" onclick="showScreen('screen-manage')" style="display:none">Staff &#9881;</button>
       <button class="back-btn" onclick="showProfile()" title="Profile">&#128100;</button>
     </div>
@@ -130,13 +130,37 @@
     </div>
   </div>
 
+  <!-- Station Select (multi-station managers/deputies) -->
+  <div id="screen-station-select" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <h1>Select Station</h1>
+    </div>
+    <div id="station-select-list" class="card-list"></div>
+  </div>
+
+  <!-- Station Hub (manager/deputy) -->
+  <div id="screen-station-hub" class="screen">
+    <div class="header">
+      <button id="btn-station-hub-back" class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
+      <h1 id="station-name">My Station</h1>
+    </div>
+    <div class="card-list">
+      <div class="card" style="cursor:pointer" onclick="showStationWorkers()">
+        <div class="card-title">Workers</div>
+      </div>
+      <div id="hub-deputies-card" class="card" style="cursor:pointer" onclick="showStationDeputies()">
+        <div class="card-title">Deputies</div>
+      </div>
+    </div>
+  </div>
+
   <!-- Station Workers (manager/deputy) -->
   <div id="screen-station-workers" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-tickets')">&#8592; Back</button>
-      <h1 id="station-name">My Station</h1>
+      <button class="back-btn" onclick="showScreen('screen-station-hub')">&#8592; Back</button>
+      <h1 id="station-workers-title">Workers</h1>
       <button id="btn-invite" class="back-btn" onclick="showInviteLink()" style="display:none">Invite</button>
-      <button id="btn-deputies" class="back-btn" onclick="showStationDeputies()" style="display:none">Deputies</button>
     </div>
     <div id="station-workers-list" class="card-list"></div>
   </div>
@@ -144,7 +168,7 @@
   <!-- Invite Link (station manager only) -->
   <div id="screen-station-invite" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showStationWorkers()">&#8592; Back</button>
+      <button class="back-btn" onclick="showScreen('screen-station-hub')">&#8592; Back</button>
       <h1>Invite Link</h1>
     </div>
     <div class="form">
@@ -173,7 +197,7 @@
   <!-- Station Deputies (manager only) -->
   <div id="screen-station-deputies" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showScreen('screen-station-workers')">&#8592; Back</button>
+      <button class="back-btn" onclick="showScreen('screen-station-hub')">&#8592; Back</button>
       <h1>Deputies</h1>
     </div>
     <div id="station-deputies-list" class="card-list"></div>
@@ -361,6 +385,6 @@
   </div>
 
 </div>
-<script type="module" src="/static/app.js?v=5"></script>
+<script type="module" src="/static/app.js?v=8"></script>
 </body>
 </html>
