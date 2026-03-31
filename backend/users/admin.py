@@ -12,6 +12,9 @@ class CustomUserAdmin(UserAdmin):
         ('CRM Info', {'fields': ('role', 'telegram_id', 'station', 'companies')}),
     )
 
+    def get_changeform_initial_data(self, request):
+        return {'is_active': False}
+
     @admin.display(description='Full Name')
     def full_name(self, obj):
         return obj.get_full_name() or '-'
