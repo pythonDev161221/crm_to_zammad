@@ -566,7 +566,7 @@ class ManageITDeputiesView(APIView):
         if not worker_id:
             return Response({'detail': 'worker_id required.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            worker = User.objects.get(pk=worker_id, role=User.Role.IT_WORKER, companies__in=companies)
+            worker = User.objects.filter(pk=worker_id, role=User.Role.IT_WORKER, companies__in=companies).distinct().get()
         except User.DoesNotExist:
             return Response({'detail': 'IT worker not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
         worker.role = User.Role.IT_DEPUTY
