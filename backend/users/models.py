@@ -79,6 +79,7 @@ class StationInvite(models.Model):
 
 class RoleInvite(models.Model):
     class Role(models.TextChoices):
+        IT_MANAGER = 'it_manager', 'IT Manager'
         IT_WORKER = 'it_worker', 'IT Worker'
         SUPPLY_WORKER = 'supply_worker', 'Supply Worker'
         STATION_MANAGER = 'station_manager', 'Station Manager'

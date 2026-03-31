@@ -1,6 +1,8 @@
+from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
-from .models import User, Station, Company
+from django.utils.html import format_html
+from .models import User, Station, Company, RoleInvite
 
 
 @admin.register(User)
@@ -48,6 +50,27 @@ class CustomUserAdmin(UserAdmin):
                     f'User saved, but Zammad group sync failed: {e}',
                     level=messages.WARNING,
                 )
+
+
+@admin.register(RoleInvite)
+class RoleInviteAdmin(admin.ModelAdmin):
+    list_display = ('role', 'company', 'station', 'created_by', 'is_used', 'created_at', 'invite_link')
+    list_filter = ('role', 'company', 'is_used')
+    readonly_fields = ('token', 'is_used', 'created_at', 'invite_link')
+    fields = ('role', 'company', 'station', 'created_by', 'token', 'is_used', 'created_at', 'invite_link')
+
+    @admin.display(description='Invite Link')
+    def invite_link(self, obj):
+        bot_username = getattr(settings, 'TELEGRAM_BOT_USERNAME', None)
+        if not bot_username:
+            return '(TELEGRAM_BOT_USERNAME not set)'
+        url = f'https://t.me/{bot_username}?startapp=inv_{obj.token}'
+        return format_html('<a href="{}" target="_blank">{}</a>', url, url)
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.token = __import__('secrets').token_urlsafe(32)
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Company)
