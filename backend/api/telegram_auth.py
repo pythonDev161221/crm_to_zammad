@@ -180,11 +180,13 @@ class RegisterView(APIView):
             if existing and not existing.is_active:
                 existing.is_active = True
                 existing.role = role
+                existing.station = None  # IT workers don't belong to a station
                 if first_name:
                     existing.first_name = first_name
                 if last_name:
                     existing.last_name = last_name
-                existing.save(update_fields=['is_active', 'role', 'first_name', 'last_name'])
+                existing.save(update_fields=['is_active', 'role', 'station', 'first_name', 'last_name'])
+                existing.companies.clear()
                 worker = existing
             else:
                 worker = User.objects.create_user(

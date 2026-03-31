@@ -419,8 +419,10 @@ class ManageITWorkerDeleteView(APIView):
             worker = User.objects.get(pk=pk, role=User.Role.IT_WORKER, companies__in=companies)
         except User.DoesNotExist:
             return Response({'detail': 'IT worker not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
-        worker.is_active = False
-        worker.save(update_fields=['is_active'])
+        worker.companies.remove(*companies)
+        if not worker.companies.exists():
+            worker.is_active = False
+            worker.save(update_fields=['is_active'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -450,8 +452,10 @@ class ManageSupplyWorkerDeleteView(APIView):
             worker = User.objects.get(pk=pk, role=User.Role.SUPPLY_WORKER, companies__in=companies)
         except User.DoesNotExist:
             return Response({'detail': 'Supply worker not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
-        worker.is_active = False
-        worker.save(update_fields=['is_active'])
+        worker.companies.remove(*companies)
+        if not worker.companies.exists():
+            worker.is_active = False
+            worker.save(update_fields=['is_active'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -515,6 +519,7 @@ class ManageStationManagerDeleteView(APIView):
 
     def delete(self, request, pk):
         from django.db.models import Q
+        from users.models import Station
         station_ids = ManageStationManagersView()._company_station_ids(request.user)
         try:
             manager = User.objects.filter(
@@ -524,8 +529,18 @@ class ManageStationManagerDeleteView(APIView):
             ).distinct().get(pk=pk)
         except User.DoesNotExist:
             return Response({'detail': 'Station manager not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
-        manager.is_active = False
-        manager.save(update_fields=['is_active'])
+        # Remove from stations belonging to this IT manager's companies
+        stations_to_remove = Station.objects.filter(id__in=station_ids)
+        for station in stations_to_remove:
+            if station.manager_id == manager.pk:
+                station.manager = None
+                station.save(update_fields=['manager'])
+            station.deputies.remove(manager)
+        # Deactivate only if no managed or deputy stations remain anywhere
+        still_manages = manager.managed_stations.exists() or manager.deputy_stations.exists()
+        if not still_manages:
+            manager.is_active = False
+            manager.save(update_fields=['is_active'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
