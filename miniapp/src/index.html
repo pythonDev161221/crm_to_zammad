@@ -302,6 +302,22 @@
     <button class="fab" onclick="showAddStaff()">+</button>
   </div>
 
+  <!-- Assign Station to Manager -->
+  <div id="screen-assign-station" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
+      <h1>Assign Station</h1>
+    </div>
+    <div class="form">
+      <div style="margin-bottom:12px;font-size:15px" id="assign-station-manager-name"></div>
+      <div class="field">
+        <label>Station *</label>
+        <select id="assign-station-select"></select>
+      </div>
+      <button class="btn btn-primary" onclick="submitAssignStation()">Assign</button>
+    </div>
+  </div>
+
   <!-- Role Invite -->
   <div id="screen-role-invite" class="screen">
     <div class="header">
@@ -447,6 +463,6 @@
   </div>
 
 </div>
-<script type="module" src="/static/app.js?v=25"></script>
+<script type="module" src="/static/app.js?v=26"></script>
 </body>
 </html>

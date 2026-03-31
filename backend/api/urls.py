@@ -41,6 +41,7 @@ urlpatterns = [
     path('manage/station-managers/', views.ManageStationManagersView.as_view(), name='manage-station-managers'),
     path('manage/station-managers/<int:pk>/', views.ManageStationManagerDeleteView.as_view(), name='manage-station-manager-delete'),
     path('manage/stations/', views.ManageCompanyStationsView.as_view(), name='manage-stations'),
+    path('manage/stations/<int:pk>/set-manager/', views.StationSetManagerView.as_view(), name='station-set-manager'),
     path('manage/it-deputies/', views.ManageITDeputiesView.as_view(), name='manage-it-deputies'),
     path('manage/it-deputies/<int:pk>/', views.ManageITDeputyDemoteView.as_view(), name='manage-it-deputy-demote'),
     path('manage/role-invite/', views.RoleInviteView.as_view(), name='role-invite'),

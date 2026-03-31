@@ -1022,7 +1022,11 @@ window.showManageSection = async function(type) {
           <div class="card-title">${escHtml(u.name)}</div>
           <div class="card-meta">@${escHtml(u.username)} · ${u.is_active ? 'Active' : '<span style="color:#dc3545">Deactivated</span>'}</div>
         </div>
-        ${u.is_active ? `<button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeManageStaff(${u.id}, '${escHtml(u.name)}')">Remove</button>` : ''}
+        ${u.is_active ? `
+          <div style="display:flex;gap:6px">
+            ${currentManageType === 'station_manager' ? `<button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:13px" onclick="showAssignStation(${u.id}, '${escHtml(u.name)}')">+ Station</button>` : ''}
+            <button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeManageStaff(${u.id}, '${escHtml(u.name)}')">Remove</button>
+          </div>` : ''}
       </div>
     `).join('');
   } catch (e) {
@@ -1093,6 +1097,36 @@ window.submitAddStaff = async function() {
     tgAlert(`Account created for ${first_name || username}.`);
     goBack();
     await showManageSection(currentManageType);
+  } catch (e) {
+    tgAlert(e.message);
+  }
+};
+
+// ── Assign Station to Existing Manager ────────────────────────────────────────
+
+let assignStationManagerId = null;
+
+window.showAssignStation = async function(managerId, managerName) {
+  assignStationManagerId = managerId;
+  document.getElementById('assign-station-manager-name').textContent = `Manager: ${managerName}`;
+  const select = document.getElementById('assign-station-select');
+  select.innerHTML = '<option value="">Loading...</option>';
+  showScreen('screen-assign-station');
+  try {
+    const stations = await api.getManageStations(currentCompanyId);
+    select.innerHTML = stations.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+  } catch (e) {
+    select.innerHTML = '<option value="">Error loading stations</option>';
+  }
+};
+
+window.submitAssignStation = async function() {
+  const stationId = document.getElementById('assign-station-select').value;
+  if (!stationId) { tgAlert('Please select a station.'); return; }
+  try {
+    await api.setStationManager(stationId, assignStationManagerId);
+    tgAlert('Station assigned successfully.');
+    goBack();
   } catch (e) {
     tgAlert(e.message);
   }

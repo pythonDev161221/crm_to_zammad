@@ -602,6 +602,36 @@ class ManageCompanyStationsView(APIView):
         return Response([{'id': s.id, 'name': s.name} for s in stations])
 
 
+class StationSetManagerView(APIView):
+    permission_classes = [IsAuthenticated, IsITManagerOrDeputy]
+
+    def post(self, request, pk):
+        from users.models import Station
+        companies = request.user.companies.all()
+        try:
+            station = Station.objects.get(pk=pk, company__in=companies)
+        except Station.DoesNotExist:
+            return Response({'detail': 'Station not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
+
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({'detail': 'user_id required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            manager = User.objects.filter(
+                pk=user_id, role=User.Role.STATION_MANAGER, managed_stations__company__in=companies
+            ).distinct().get()
+        except User.DoesNotExist:
+            return Response({'detail': 'Station manager not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if station.manager_id == manager.pk:
+            return Response({'detail': 'This person is already the manager of this station.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        station.manager = manager
+        station.save(update_fields=['manager'])
+        return Response({'detail': 'Manager assigned.'})
+
+
 class RoleInviteView(APIView):
     permission_classes = [IsAuthenticated, IsITManager]
 
