@@ -1119,10 +1119,11 @@ window.showAssignStation = async function(managerId, managerName) {
   try {
     const stations = await api.getEmptyStations(currentCompanyId);
     if (!stations.length) {
-      select.innerHTML = '<option value="">No empty stations available</option>';
-    } else {
-      select.innerHTML = stations.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+      tgAlert('No empty stations available. All stations already have a manager.');
+      goBack();
+      return;
     }
+    select.innerHTML = stations.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
   } catch (e) {
     select.innerHTML = '<option value="">Error loading stations</option>';
   }
