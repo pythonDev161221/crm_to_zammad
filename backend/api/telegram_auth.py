@@ -177,14 +177,24 @@ class RegisterView(APIView):
         else:
             # RoleInvite
             role = role_invite.role
-            worker = User.objects.create_user(
-                username=_make_username(user_data),
-                password=None,
-                first_name=first_name or user_data.get('first_name', ''),
-                last_name=last_name or user_data.get('last_name', ''),
-                role=role,
-                telegram_id=telegram_id,
-            )
+            if existing and not existing.is_active:
+                existing.is_active = True
+                existing.role = role
+                if first_name:
+                    existing.first_name = first_name
+                if last_name:
+                    existing.last_name = last_name
+                existing.save(update_fields=['is_active', 'role', 'first_name', 'last_name'])
+                worker = existing
+            else:
+                worker = User.objects.create_user(
+                    username=_make_username(user_data),
+                    password=None,
+                    first_name=first_name or user_data.get('first_name', ''),
+                    last_name=last_name or user_data.get('last_name', ''),
+                    role=role,
+                    telegram_id=telegram_id,
+                )
             worker.companies.add(role_invite.company)
             if role == RoleInvite.Role.STATION_MANAGER and role_invite.station:
                 role_invite.station.manager = worker
