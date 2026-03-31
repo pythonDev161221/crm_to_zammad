@@ -1060,7 +1060,11 @@ window.showAddStaff = async function() {
 
   if (currentManageType === 'station_manager') {
     try {
-      const stations = await api.getManageStations(currentCompanyId);
+      const stations = await api.getEmptyStations(currentCompanyId);
+      if (!stations.length) {
+        tgAlert('No empty stations available. All stations already have a manager.');
+        return;
+      }
       const select = document.getElementById('add-staff-station');
       select.innerHTML = stations.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
       stationField.style.display = '';
@@ -1152,8 +1156,12 @@ window.showRoleInvite = async function() {
     stationField.style.display = '';
     stationSelect.innerHTML = '<option value="">Loading...</option>';
     try {
-      const stations = await api.getManageStations(currentCompanyId);
-      stationSelect.innerHTML = stations.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+      const stations = await api.getEmptyStations(currentCompanyId);
+      if (!stations.length) {
+        stationSelect.innerHTML = '<option value="">No empty stations available</option>';
+      } else {
+        stationSelect.innerHTML = stations.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+      }
     } catch (e) {
       stationSelect.innerHTML = '<option value="">Error loading stations</option>';
     }
