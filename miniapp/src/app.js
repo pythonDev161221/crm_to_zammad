@@ -1,4 +1,4 @@
-import { api, setToken } from '/static/api.js?v=17';
+import { api, setToken } from '/static/api.js?v=18';
 
 const tg = window.Telegram?.WebApp;
 const inTelegram = !!(tg?.initData);
@@ -105,7 +105,7 @@ async function init() {
       const auth = await api.telegramAuth(initData);
       if (!auth.needs_linking) {
         // Already has an account — log them in normally
-        setToken(auth.access);
+        setToken(auth.access, auth.refresh);
         currentUser = auth.user;
         await loadTickets();
         return;
@@ -129,7 +129,7 @@ async function init() {
       showScreen('screen-link-account');
       return;
     }
-    setToken(auth.access);
+    setToken(auth.access, auth.refresh);
     currentUser = auth.user;
     if (currentUser.role === 'it_manager' || currentUser.role === 'it_deputy') {
       currentUser.companies = await api.getMyCompanies().catch(() => []);
@@ -162,7 +162,7 @@ window.submitRegister = async function() {
   const initData = tg?.initData || '';
   try {
     const auth = await api.registerWithInvite(initData, token, first_name, last_name);
-    setToken(auth.access);
+    setToken(auth.access, auth.refresh);
     currentUser = auth.user;
     await loadTickets();
   } catch (e) {
@@ -178,7 +178,7 @@ window.submitLinkAccount = async function() {
   const initData = tg?.initData || '';
   try {
     const auth = await api.linkAccount(initData, username, password);
-    setToken(auth.access);
+    setToken(auth.access, auth.refresh);
     currentUser = auth.user;
     if (currentUser.role === 'it_manager' || currentUser.role === 'it_deputy') {
       currentUser.companies = await api.getMyCompanies().catch(() => []);

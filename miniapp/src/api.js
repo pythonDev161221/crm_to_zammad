@@ -1,12 +1,14 @@
 const BASE_URL = '/api';
 
 let accessToken = null;
+let refreshToken = null;
 
-export function setToken(token) {
-  accessToken = token;
+export function setToken(access, refresh) {
+  accessToken = access;
+  if (refresh !== undefined) refreshToken = refresh;
 }
 
-async function request(method, path, body = null) {
+async function doFetch(method, path, body) {
   const headers = {};
   if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
@@ -18,11 +20,25 @@ async function request(method, path, body = null) {
     requestBody = JSON.stringify(body);
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers,
-    body: requestBody,
-  });
+  return fetch(`${BASE_URL}${path}`, { method, headers, body: requestBody });
+}
+
+async function request(method, path, body = null) {
+  let res = await doFetch(method, path, body);
+
+  if (res.status === 401 && refreshToken) {
+    // Try to refresh the access token
+    const refreshRes = await fetch(`${BASE_URL}/auth/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+    if (refreshRes.ok) {
+      const data = await refreshRes.json();
+      accessToken = data.access;
+      res = await doFetch(method, path, body);
+    }
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
