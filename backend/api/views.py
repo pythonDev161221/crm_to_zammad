@@ -575,7 +575,7 @@ class ManageITDeputyDemoteView(APIView):
     def delete(self, request, pk):
         companies = request.user.companies.all()
         try:
-            deputy = User.objects.get(pk=pk, role=User.Role.IT_DEPUTY, companies__in=companies)
+            deputy = User.objects.filter(pk=pk, role=User.Role.IT_DEPUTY, companies__in=companies).distinct().get()
         except User.DoesNotExist:
             return Response({'detail': 'IT deputy not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
         deputy.role = User.Role.IT_WORKER
