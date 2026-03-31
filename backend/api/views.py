@@ -626,8 +626,8 @@ class StationSetManagerView(APIView):
         except User.DoesNotExist:
             return Response({'detail': 'Station manager not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
 
-        if station.manager_id == manager.pk:
-            return Response({'detail': 'This person is already the manager of this station.'}, status=status.HTTP_400_BAD_REQUEST)
+        if station.manager is not None:
+            return Response({'detail': 'This station already has a manager.'}, status=status.HTTP_400_BAD_REQUEST)
 
         station.manager = manager
         station.save(update_fields=['manager'])
