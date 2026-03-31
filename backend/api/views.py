@@ -599,6 +599,8 @@ class ManageCompanyStationsView(APIView):
         if company_id:
             companies = companies.filter(pk=company_id)
         stations = Station.objects.filter(company__in=companies)
+        if request.query_params.get('empty'):
+            stations = stations.filter(manager__isnull=True)
         return Response([{'id': s.id, 'name': s.name} for s in stations])
 
 
