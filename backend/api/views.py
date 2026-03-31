@@ -1,8 +1,12 @@
+import logging
+
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+logger = logging.getLogger(__name__)
 
 from tasks.models import Ticket, Task, Comment
 from users.models import User, StationInvite
@@ -147,8 +151,9 @@ class TicketResolveView(APIView):
 
         try:
             push_to_zammad(ticket)
-        except Exception:
-            pass  # zammad_synced stays False, retry via management command
+        except Exception as e:
+            logger.warning(f'Zammad push failed for ticket #{ticket.pk}: {e}')
+            # zammad_synced stays False, retry via management command
 
         return Response(TicketSerializer(ticket).data)
 
@@ -405,8 +410,8 @@ class ManageITWorkersView(APIView):
         try:
             from zammad_bridge.agent_sync import sync_agent_created
             sync_agent_created(worker)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f'Zammad agent sync failed for new IT worker {worker.username}: {e}')
         return Response({'id': worker.id, 'username': worker.username, 'name': worker.get_full_name() or worker.username}, status=status.HTTP_201_CREATED)
 
 

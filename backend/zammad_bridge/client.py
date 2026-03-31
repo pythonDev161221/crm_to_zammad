@@ -1,7 +1,10 @@
 import base64
+import logging
 import mimetypes
 import requests
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 class ZammadClient:
@@ -50,8 +53,8 @@ class ZammadClient:
             current_groups = me.get('group_ids', {})
             current_groups[str(group_id)] = ['full']
             self.put(f'/users/{me["id"]}', {'group_ids': current_groups})
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f'Failed to assign new Zammad group {name!r} to API user: {e}')
         return group_id, full_name
 
     # ── Organizations ─────────────────────────────────────────────────────────
@@ -114,8 +117,8 @@ def _photo_attachments(photos):
             mime = mimetypes.guess_type(photo.image.name)[0] or 'image/jpeg'
             filename = photo.image.name.split('/')[-1]
             attachments.append({'filename': filename, 'data': data, 'mime-type': mime})
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f'Failed to encode photo attachment {photo.pk}: {e}')
     return attachments
 
 
