@@ -416,7 +416,7 @@ class ManageITWorkerDeleteView(APIView):
     def delete(self, request, pk):
         companies = request.user.companies.all()
         try:
-            worker = User.objects.get(pk=pk, role=User.Role.IT_WORKER, companies__in=companies)
+            worker = User.objects.filter(pk=pk, role=User.Role.IT_WORKER, companies__in=companies).distinct().get()
         except User.DoesNotExist:
             return Response({'detail': 'IT worker not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
         worker.companies.remove(*companies)
@@ -449,7 +449,7 @@ class ManageSupplyWorkerDeleteView(APIView):
     def delete(self, request, pk):
         companies = request.user.companies.all()
         try:
-            worker = User.objects.get(pk=pk, role=User.Role.SUPPLY_WORKER, companies__in=companies)
+            worker = User.objects.filter(pk=pk, role=User.Role.SUPPLY_WORKER, companies__in=companies).distinct().get()
         except User.DoesNotExist:
             return Response({'detail': 'Supply worker not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
         worker.companies.remove(*companies)
