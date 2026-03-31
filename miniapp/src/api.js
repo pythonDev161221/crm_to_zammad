@@ -97,6 +97,7 @@ export const api = {
   getManageStations: (companyId) => request('GET', companyId ? `/manage/stations/?company_id=${companyId}` : '/manage/stations/'),
   getEmptyStations: (companyId) => request('GET', companyId ? `/manage/stations/?company_id=${companyId}&empty=true` : '/manage/stations/?empty=true'),
   setStationManager: (stationId, userId) => request('POST', `/manage/stations/${stationId}/set-manager/`, { user_id: userId }),
+  removeStationManager: (stationId) => request('DELETE', `/manage/stations/${stationId}/remove-manager/`),
   resolveTicket: (id) => request('POST', `/tickets/${id}/resolve/`),
   rateTicket: (id, rating) => request('POST', `/tickets/${id}/rate/`, { rating }),
 

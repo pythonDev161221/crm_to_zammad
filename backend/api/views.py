@@ -478,13 +478,24 @@ class ManageStationManagersView(APIView):
         company_id = request.query_params.get('company_id')
         if company_id:
             companies = companies.filter(pk=company_id)
-        station_ids = Station.objects.filter(company__in=companies).values_list('id', flat=True)
+        stations_qs = Station.objects.filter(company__in=companies)
+        station_ids = stations_qs.values_list('id', flat=True)
         qs = User.objects.filter(
             role=User.Role.STATION_MANAGER
         ).filter(
             Q(managed_stations__id__in=station_ids) | Q(deputy_stations__id__in=station_ids)
         ).distinct()
-        return Response([{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active} for u in qs])
+        result = []
+        for u in qs:
+            managed = list(stations_qs.filter(manager=u).values('id', 'name'))
+            result.append({
+                'id': u.id,
+                'username': u.username,
+                'name': u.get_full_name() or u.username,
+                'is_active': u.is_active,
+                'stations': managed,
+            })
+        return Response(result)
 
     def post(self, request):
         from users.models import Station
@@ -602,6 +613,32 @@ class ManageCompanyStationsView(APIView):
         if request.query_params.get('empty'):
             stations = stations.filter(manager__isnull=True)
         return Response([{'id': s.id, 'name': s.name} for s in stations])
+
+
+class StationRemoveManagerView(APIView):
+    permission_classes = [IsAuthenticated, IsITManagerOrDeputy]
+
+    def delete(self, request, pk):
+        from users.models import Station
+        companies = request.user.companies.all()
+        try:
+            station = Station.objects.get(pk=pk, company__in=companies)
+        except Station.DoesNotExist:
+            return Response({'detail': 'Station not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if station.manager is None:
+            return Response({'detail': 'This station has no manager.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        manager = station.manager
+        station.manager = None
+        station.save(update_fields=['manager'])
+
+        still_manages = manager.managed_stations.exists() or manager.deputy_stations.exists()
+        if not still_manages:
+            manager.is_active = False
+            manager.save(update_fields=['is_active'])
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class StationSetManagerView(APIView):

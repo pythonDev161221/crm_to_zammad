@@ -1016,21 +1016,43 @@ window.showManageSection = async function(type) {
       list.innerHTML = '<div class="empty">No staff yet.</div>';
       return;
     }
-    list.innerHTML = staff.map(u => `
-      <div class="card" style="display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <div class="card-title">${escHtml(u.name)}</div>
-          <div class="card-meta">@${escHtml(u.username)} · ${u.is_active ? 'Active' : '<span style="color:#dc3545">Deactivated</span>'}</div>
-        </div>
-        ${u.is_active ? `
-          <div style="display:flex;gap:6px">
-            ${currentManageType === 'station_manager' ? `<button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:13px" onclick="showAssignStation(${u.id}, '${escHtml(u.name)}')">+ Station</button>` : ''}
-            <button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeManageStaff(${u.id}, '${escHtml(u.name)}')">Remove</button>
-          </div>` : ''}
-      </div>
-    `).join('');
+    list.innerHTML = staff.map(u => {
+      const stationsHtml = (currentManageType === 'station_manager' && u.stations && u.stations.length)
+        ? u.stations.map(s => `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+              <span style="font-size:13px;color:var(--hint)">${escHtml(s.name)}</span>
+              ${u.is_active ? `<button class="btn btn-danger" style="width:auto;padding:2px 8px;font-size:12px" onclick="removeFromStation(${s.id}, '${escHtml(s.name)}', '${escHtml(u.name)}')">Remove</button>` : ''}
+            </div>`).join('')
+        : '';
+      return `
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div class="card-title">${escHtml(u.name)}</div>
+              <div class="card-meta">@${escHtml(u.username)} · ${u.is_active ? 'Active' : '<span style="color:#dc3545">Deactivated</span>'}</div>
+            </div>
+            ${u.is_active ? `
+              <div style="display:flex;gap:6px">
+                ${currentManageType === 'station_manager' ? `<button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:13px" onclick="showAssignStation(${u.id}, '${escHtml(u.name)}')">+ Station</button>` : ''}
+                <button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeManageStaff(${u.id}, '${escHtml(u.name)}')">Remove all</button>
+              </div>` : ''}
+          </div>
+          ${stationsHtml}
+        </div>`;
+    }).join('');
   } catch (e) {
     list.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  }
+};
+
+window.removeFromStation = async function(stationId, stationName, managerName) {
+  const confirmed = await tgConfirm(`Remove ${managerName} from ${stationName}?`);
+  if (!confirmed) return;
+  try {
+    await api.removeStationManager(stationId);
+    await showManageSection(currentManageType);
+  } catch (e) {
+    tgAlert(e.message);
   }
 };
 
