@@ -92,20 +92,28 @@ class ZammadClient:
     def get_or_create_customer(self, user, organization_id=None):
         results = self.get('/users/search', params={'query': user.username, 'limit': 10})
         for u in results:
-            if u.get('login') == user.username:
+            if u.get('login', '').lower() == user.username.lower():
                 return u['login']
         payload = {
             'firstname': user.first_name or user.username,
             'lastname': user.last_name or '',
-            'login': user.username,
-            'email': user.email or f'{user.username}@internal.local',
+            'login': user.username.lower(),
+            'email': user.email or f'{user.username.lower()}@internal.local',
             'roles': ['Customer'],
             'active': True,
         }
         if organization_id:
             payload['organization_id'] = organization_id
-        result = self.post('/users', payload)
-        return result.get('login', user.username)
+        try:
+            result = self.post('/users', payload)
+            return result.get('login', user.username.lower())
+        except Exception:
+            # User may exist with this login — search all users as fallback
+            all_users = self.get('/users')
+            for u in all_users:
+                if u.get('login', '').lower() == user.username.lower():
+                    return u['login']
+            raise
 
 
 def _photo_attachments(photos):
