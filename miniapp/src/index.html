@@ -7,12 +7,12 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="/static/style.css?v=25">
 </head>
-<body>
+<body onload="initLang()">
 <div id="app">
 
   <!-- Loading -->
   <div id="screen-loading" class="screen active">
-    <div class="loading">Connecting...</div>
+    <div class="loading" data-i18n="connecting">Connecting...</div>
   </div>
 
   <!-- Register via invite link -->
@@ -22,7 +22,7 @@
       <h1>Welcome</h1>
     </div>
     <div class="form">
-      <div id="link-account-inactive-notice" style="display:none;background:var(--secondary-bg);border-radius:8px;padding:12px;margin-bottom:16px;font-size:14px;color:var(--hint)">
+      <div id="link-account-inactive-notice" style="display:none;background:var(--secondary-bg);border-radius:8px;padding:12px;margin-bottom:16px;font-size:14px;color:var(--hint)" data-i18n="msg_deactivated_account">
         Your account has been deactivated. Ask your manager for a new invite link to rejoin.
       </div>
 
@@ -34,18 +34,18 @@
         </div>
         <div id="accordion-invite" style="display:none;margin-top:12px">
           <div class="field" id="register-token-field">
-            <label>Invite Token *</label>
-            <input id="register-token" type="text" placeholder="Paste token or full invite link">
+            <label data-i18n="label_invite_token">Invite Token *</label>
+            <input id="register-token" type="text" placeholder="Paste token or full invite link" data-i18n-placeholder="placeholder_token">
           </div>
           <div class="field">
-            <label>First Name *</label>
-            <input id="register-first" type="text" placeholder="Ivan" autocomplete="given-name">
+            <label data-i18n="label_first_name">First Name *</label>
+            <input id="register-first" type="text" placeholder="Ivan" autocomplete="given-name" data-i18n-placeholder="placeholder_first_name">
           </div>
           <div class="field">
-            <label>Last Name</label>
-            <input id="register-last" type="text" placeholder="Petrov" autocomplete="family-name">
+            <label data-i18n="label_last_name">Last Name</label>
+            <input id="register-last" type="text" placeholder="Petrov" autocomplete="family-name" data-i18n-placeholder="placeholder_last_name">
           </div>
-          <button class="btn btn-primary" onclick="submitRegister()">Create Account</button>
+          <button class="btn btn-primary" onclick="submitRegister()" data-i18n="btn_create_account">Create Account</button>
         </div>
       </div>
 
@@ -57,14 +57,14 @@
         </div>
         <div id="accordion-activate" style="display:none;margin-top:12px">
           <div class="field">
-            <label>Username</label>
-            <input id="link-username" type="text" placeholder="your_username" autocomplete="username">
+            <label data-i18n="label_username">Username</label>
+            <input id="link-username" type="text" placeholder="your_username" autocomplete="username" data-i18n-placeholder="placeholder_username">
           </div>
           <div class="field">
-            <label>Password</label>
-            <input id="link-password" type="password" placeholder="Your password" autocomplete="current-password">
+            <label data-i18n="label_password">Password</label>
+            <input id="link-password" type="password" placeholder="Your password" autocomplete="current-password" data-i18n-placeholder="placeholder_password">
           </div>
-          <button class="btn btn-primary" onclick="submitLinkAccount()">Activate</button>
+          <button class="btn btn-primary" onclick="submitLinkAccount()" data-i18n="btn_activate">Activate</button>
         </div>
       </div>
 
@@ -74,7 +74,7 @@
   <!-- Ticket List -->
   <div id="screen-tickets" class="screen">
     <div class="header">
-      <h1>My Tickets</h1>
+      <h1 data-i18n="screen_my_tickets">My Tickets</h1>
       <button id="btn-station" class="back-btn" onclick="showStationOrSelect()" style="display:none">Station &#9881;</button>
       <button id="btn-manage" class="back-btn" onclick="showCompanyOrManage()" style="display:none">Staff &#9881;</button>
       <button class="back-btn" onclick="showProfile()" title="Profile">&#128100;</button>
@@ -86,7 +86,7 @@
   <!-- Ticket Detail -->
   <div id="screen-ticket-detail" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
       <h1 id="ticket-detail-title">Ticket</h1>
     </div>
     <div id="ticket-detail-body"></div>
@@ -95,60 +95,60 @@
   <!-- Create Ticket -->
   <div id="screen-create-ticket" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1>New Request</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 data-i18n="screen_new_request">New Request</h1>
     </div>
     <div class="form">
       <div class="field" id="station-select-field" style="display:none">
-        <label>Station *</label>
+        <label data-i18n="label_station">Station *</label>
         <select id="new-ticket-station"></select>
       </div>
       <div class="field">
-        <label>Title *</label>
-        <input id="new-ticket-title" type="text" placeholder="Briefly describe the problem">
+        <label data-i18n="label_title">Title *</label>
+        <input id="new-ticket-title" type="text" placeholder="Briefly describe the problem" data-i18n-placeholder="placeholder_title">
       </div>
       <div class="field">
-        <label>Details</label>
-        <textarea id="new-ticket-desc" placeholder="Any additional information..."></textarea>
+        <label data-i18n="label_details">Details</label>
+        <textarea id="new-ticket-desc" placeholder="Any additional information..." data-i18n-placeholder="placeholder_details"></textarea>
       </div>
       <div class="field">
-        <label>Photos of the problem</label>
+        <label data-i18n="label_photos_of_problem">Photos of the problem</label>
         <label class="photo-upload-btn">
-          📷 Attach photos
+          <span data-i18n="btn_attach_photos">📷 Attach photos</span>
           <input type="file" id="new-ticket-photos" accept="image/*" multiple style="display:none"
                  onchange="previewTicketPhotos(this)">
         </label>
         <div id="new-ticket-photo-preview" class="comment-photos" style="margin-top:8px"></div>
       </div>
-      <button id="btn-submit-ticket" class="btn btn-primary" onclick="submitCreateTicket()">Submit</button>
+      <button id="btn-submit-ticket" class="btn btn-primary" onclick="submitCreateTicket()" data-i18n="btn_submit_ticket">Submit</button>
     </div>
   </div>
 
   <!-- Delegate Task -->
   <div id="screen-delegate" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1>Delegate</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 data-i18n="screen_delegate">Delegate</h1>
     </div>
     <div class="form">
       <input type="hidden" id="delegate-ticket-id">
       <div class="field">
-        <label>Select IT Worker</label>
+        <label data-i18n="label_select_it_worker">Select IT Worker</label>
         <div id="delegate-worker-list" class="card-list" style="padding:0"></div>
       </div>
       <div class="field">
-        <label>Notes for them</label>
-        <textarea id="delegate-notes" placeholder="What should they do?"></textarea>
+        <label data-i18n="label_notes">Notes for them</label>
+        <textarea id="delegate-notes" placeholder="What should they do?" data-i18n-placeholder="placeholder_notes"></textarea>
       </div>
-      <button class="btn btn-primary" onclick="submitDelegate()">Send</button>
+      <button class="btn btn-primary" onclick="submitDelegate()" data-i18n="btn_send">Send</button>
     </div>
   </div>
 
   <!-- Station Select (multi-station managers/deputies) -->
   <div id="screen-station-select" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1>Select Station</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 data-i18n="screen_select_station">Select Station</h1>
     </div>
     <div id="station-select-list" class="card-list"></div>
   </div>
@@ -156,15 +156,15 @@
   <!-- Station Hub (manager/deputy) -->
   <div id="screen-station-hub" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
       <h1 id="station-name">My Station</h1>
     </div>
     <div class="card-list">
       <div class="card" style="cursor:pointer" onclick="showStationWorkers()">
-        <div class="card-title">Workers</div>
+        <div class="card-title" data-i18n="btn_workers">Workers</div>
       </div>
       <div id="hub-deputies-card" class="card" style="cursor:pointer" onclick="showStationDeputies()">
-        <div class="card-title">Deputies</div>
+        <div class="card-title" data-i18n="btn_deputies">Deputies</div>
       </div>
     </div>
   </div>
@@ -172,9 +172,9 @@
   <!-- Station Workers (manager/deputy) -->
   <div id="screen-station-workers" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1 id="station-workers-title">Workers</h1>
-      <button id="btn-invite" class="back-btn" onclick="showInviteLink()" style="display:none">Invite</button>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 id="station-workers-title" data-i18n="screen_station_workers">Workers</h1>
+      <button id="btn-invite" class="back-btn" onclick="showInviteLink()" style="display:none" data-i18n="btn_invite">Invite</button>
     </div>
     <div id="station-workers-list" class="card-list"></div>
   </div>
@@ -182,37 +182,37 @@
   <!-- Invite Link (station manager only) -->
   <div id="screen-station-invite" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1>Invite Link</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 data-i18n="screen_invite_link">Invite Link</h1>
     </div>
     <div class="form">
-      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px">
+      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px" data-i18n="content_share_invite">
         Share this link with your workers. Anyone with this link can join your station.
       </p>
       <div id="invite-station-field" class="field" style="display:none">
-        <label>Station</label>
+        <label data-i18n="label_station">Station</label>
         <select id="invite-station-select"></select>
       </div>
       <div id="invite-link-box" style="display:none">
         <div class="field">
-          <label>Current Link</label>
+          <label data-i18n="label_current_link">Current Link</label>
           <div id="invite-link-text" style="word-break:break-all;padding:10px;background:var(--secondary-bg);border-radius:8px;font-size:13px;margin-bottom:8px"></div>
         </div>
-        <button class="btn btn-primary" onclick="copyInviteLink()">Copy Link</button>
-        <button class="btn btn-danger" style="margin-top:8px" onclick="deactivateInviteLink()">Deactivate Link</button>
+        <button class="btn btn-primary" onclick="copyInviteLink()" data-i18n="btn_copy_link">Copy Link</button>
+        <button class="btn btn-danger" style="margin-top:8px" onclick="deactivateInviteLink()" data-i18n="btn_deactivate_link">Deactivate Link</button>
       </div>
       <div id="invite-no-link" style="display:none">
-        <p style="color:var(--hint);font-size:14px;margin-bottom:12px">No active invite link.</p>
+        <p style="color:var(--hint);font-size:14px;margin-bottom:12px" data-i18n="msg_no_active_link">No active invite link.</p>
       </div>
-      <button class="btn btn-secondary" style="margin-top:8px" onclick="generateInviteLink()">Generate New Link</button>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="generateInviteLink()" data-i18n="btn_generate_new_link">Generate New Link</button>
     </div>
   </div>
 
   <!-- Station Deputies (manager only) -->
   <div id="screen-station-deputies" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1>Deputies</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 data-i18n="screen_station_deputies">Deputies</h1>
     </div>
     <div id="station-deputies-list" class="card-list"></div>
     <button class="fab" onclick="showAddDeputy()">+</button>
@@ -221,53 +221,53 @@
   <!-- Add Deputy (promote existing worker) -->
   <div id="screen-add-deputy" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1>Promote to Deputy</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 data-i18n="screen_promote_deputy">Promote to Deputy</h1>
     </div>
     <div class="form">
-      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px">
+      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px" data-i18n="content_promote_worker_info">
         Select a worker from your station to promote to deputy.
       </p>
       <div class="field">
-        <label>Select Worker</label>
+        <label data-i18n="label_select_worker">Select Worker</label>
         <select id="deputy-worker-select"></select>
       </div>
-      <button class="btn btn-primary" onclick="submitPromoteDeputy()">Promote to Deputy</button>
+      <button class="btn btn-primary" onclick="submitPromoteDeputy()" data-i18n="btn_promote_to_deputy">Promote to Deputy</button>
     </div>
   </div>
 
   <!-- Add Worker -->
   <div id="screen-add-worker" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1>Add Worker</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 data-i18n="screen_add_worker">Add Worker</h1>
     </div>
     <div class="form">
       <div class="field">
-        <label>First Name</label>
-        <input id="new-worker-first" type="text" placeholder="Ivan">
+        <label data-i18n="label_first_name">First Name</label>
+        <input id="new-worker-first" type="text" placeholder="Ivan" data-i18n-placeholder="placeholder_first_name">
       </div>
       <div class="field">
-        <label>Last Name</label>
-        <input id="new-worker-last" type="text" placeholder="Petrov">
+        <label data-i18n="label_last_name">Last Name</label>
+        <input id="new-worker-last" type="text" placeholder="Petrov" data-i18n-placeholder="placeholder_last_name">
       </div>
       <div class="field">
-        <label>Username *</label>
-        <input id="new-worker-username" type="text" placeholder="ivan_petrov">
+        <label data-i18n="label_username">Username *</label>
+        <input id="new-worker-username" type="text" placeholder="ivan_petrov" data-i18n-placeholder="placeholder_username_example">
       </div>
       <div class="field">
-        <label>Temporary Password *</label>
-        <input id="new-worker-password" type="password" placeholder="min 6 characters">
+        <label data-i18n="label_temporary_password">Temporary Password *</label>
+        <input id="new-worker-password" type="password" placeholder="min 6 characters" data-i18n-placeholder="placeholder_password_min">
       </div>
-      <button class="btn btn-primary" onclick="submitAddWorker()">Create Account</button>
+      <button class="btn btn-primary" onclick="submitAddWorker()" data-i18n="btn_create_account">Create Account</button>
     </div>
   </div>
 
   <!-- Company Select (multi-company IT managers/deputies) -->
   <div id="screen-company-select" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1>Select Company</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 data-i18n="screen_select_company">Select Company</h1>
     </div>
     <div id="company-select-list" class="card-list"></div>
   </div>
@@ -275,21 +275,21 @@
   <!-- IT Manager: Staff Management Hub -->
   <div id="screen-manage" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1 id="manage-company-name">Manage Staff</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 id="manage-company-name" data-i18n="screen_manage_staff">Manage Staff</h1>
     </div>
     <div class="card-list">
       <div id="manage-card-it-worker" class="card" onclick="showManageSection('it_worker')">
-        <div class="card-title">IT Workers</div>
+        <div class="card-title" data-i18n="manage_it_workers">IT Workers</div>
       </div>
       <div id="manage-card-it-deputy" class="card" onclick="showManageSection('it_deputy')">
-        <div class="card-title">IT Deputies</div>
+        <div class="card-title" data-i18n="manage_it_deputies">IT Deputies</div>
       </div>
       <div id="manage-card-supply-worker" class="card" onclick="showManageSection('supply_worker')">
-        <div class="card-title">Supply Workers</div>
+        <div class="card-title" data-i18n="manage_supply_workers">Supply Workers</div>
       </div>
       <div class="card" onclick="showManageSection('station_manager')">
-        <div class="card-title">Station Managers</div>
+        <div class="card-title" data-i18n="manage_station_managers">Station Managers</div>
       </div>
     </div>
   </div>
@@ -297,9 +297,9 @@
   <!-- Staff List -->
   <div id="screen-manage-staff" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1 id="manage-staff-title">Staff</h1>
-      <button id="btn-role-invite" class="back-btn" onclick="showRoleInvite()" style="display:none">Invite</button>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 id="manage-staff-title" data-i18n="screen_staff_list">Staff</h1>
+      <button id="btn-role-invite" class="back-btn" onclick="showRoleInvite()" style="display:none" data-i18n="btn_invite">Invite</button>
     </div>
     <div id="manage-staff-list" class="card-list"></div>
     <button class="fab" onclick="showAddStaff()">+</button>
@@ -308,35 +308,35 @@
   <!-- Assign Station to Manager -->
   <div id="screen-assign-station" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1>Assign Station</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 data-i18n="screen_assign_station">Assign Station</h1>
     </div>
     <div class="form">
       <div style="margin-bottom:12px;font-size:15px" id="assign-station-manager-name"></div>
       <div class="field">
-        <label>Station *</label>
+        <label data-i18n="label_station">Station *</label>
         <select id="assign-station-select"></select>
       </div>
-      <button class="btn btn-primary" onclick="submitAssignStation()">Assign</button>
+      <button class="btn btn-primary" onclick="submitAssignStation()" data-i18n="btn_assign_station">Assign Station</button>
     </div>
   </div>
 
   <!-- Role Invite -->
   <div id="screen-role-invite" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1 id="role-invite-title">Invite via Link</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 id="role-invite-title" data-i18n="screen_role_invite">Invite via Link</h1>
     </div>
     <div class="form">
       <div id="role-invite-station-field" class="field" style="display:none">
-        <label>Station *</label>
+        <label data-i18n="label_station">Station *</label>
         <select id="role-invite-station"></select>
       </div>
-      <button class="btn btn-primary" onclick="generateRoleInvite()">Generate Invite Link</button>
+      <button class="btn btn-primary" onclick="generateRoleInvite()" data-i18n="btn_generate_invite_link">Generate Invite Link</button>
       <div id="role-invite-result" style="display:none;margin-top:16px">
-        <div style="font-size:12px;color:var(--hint);margin-bottom:6px">One-time invite link:</div>
+        <div style="font-size:12px;color:var(--hint);margin-bottom:6px" data-i18n="content_invite_role_info">One-time invite link:</div>
         <div id="role-invite-link" style="font-size:13px;word-break:break-all;background:var(--secondary-bg);padding:10px;border-radius:8px;margin-bottom:10px"></div>
-        <button class="btn btn-secondary" onclick="copyRoleInviteLink()">Copy Link</button>
+        <button class="btn btn-secondary" onclick="copyRoleInviteLink()" data-i18n="btn_copy_link">Copy Link</button>
       </div>
       <div id="role-invite-list" style="margin-top:24px"></div>
     </div>
@@ -345,47 +345,47 @@
   <!-- Add Staff Form -->
   <div id="screen-add-staff" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1 id="add-staff-title">Add Staff</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 id="add-staff-title" data-i18n="screen_add_staff">Add Staff</h1>
     </div>
     <div class="form">
       <div class="field" id="add-staff-station-field" style="display:none">
-        <label>Station *</label>
+        <label data-i18n="label_station">Station *</label>
         <select id="add-staff-station"></select>
       </div>
       <div class="field" id="add-staff-company-field" style="display:none">
-        <label>Company *</label>
+        <label data-i18n="label_company">Company *</label>
         <select id="add-staff-company"></select>
       </div>
       <div class="field">
-        <label>First Name</label>
-        <input id="add-staff-first" type="text" placeholder="Ivan">
+        <label data-i18n="label_first_name">First Name</label>
+        <input id="add-staff-first" type="text" placeholder="Ivan" data-i18n-placeholder="placeholder_first_name">
       </div>
       <div class="field">
-        <label>Last Name</label>
-        <input id="add-staff-last" type="text" placeholder="Petrov">
+        <label data-i18n="label_last_name">Last Name</label>
+        <input id="add-staff-last" type="text" placeholder="Petrov" data-i18n-placeholder="placeholder_last_name">
       </div>
       <div class="field">
-        <label>Username *</label>
-        <input id="add-staff-username" type="text" placeholder="ivan_petrov">
+        <label data-i18n="label_username">Username *</label>
+        <input id="add-staff-username" type="text" placeholder="ivan_petrov" data-i18n-placeholder="placeholder_username_example">
       </div>
       <div class="field">
-        <label>Temporary Password *</label>
-        <input id="add-staff-password" type="password" placeholder="min 6 characters">
+        <label data-i18n="label_temporary_password">Temporary Password *</label>
+        <input id="add-staff-password" type="password" placeholder="min 6 characters" data-i18n-placeholder="placeholder_password_min">
       </div>
-      <button class="btn btn-primary" onclick="submitAddStaff()">Create Account</button>
+      <button class="btn btn-primary" onclick="submitAddStaff()" data-i18n="btn_create_account">Create Account</button>
     </div>
   </div>
 
   <!-- Rate Ticket -->
   <div id="screen-rate-ticket" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1>Rate Resolution</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 data-i18n="screen_rate_resolution">Rate Resolution</h1>
     </div>
     <div class="form">
       <p id="rate-ticket-title" style="font-weight:600;margin-bottom:8px"></p>
-      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:20px">
+      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:20px" data-i18n="content_resolution_quality">
         Was your problem resolved? Rate the quality of support.
       </p>
       <input type="hidden" id="rate-ticket-id">
@@ -396,16 +396,16 @@
         <span class="star" data-value="4" onclick="selectStar(4)" style="cursor:pointer;opacity:0.3">&#9733;</span>
         <span class="star" data-value="5" onclick="selectStar(5)" style="cursor:pointer;opacity:0.3">&#9733;</span>
       </div>
-      <button class="btn btn-primary" onclick="submitRating()">Submit Rating</button>
-      <button class="btn btn-danger" style="margin-top:8px" onclick="submitNotResolved()">Not Resolved</button>
+      <button class="btn btn-primary" onclick="submitRating()" data-i18n="btn_submit_rating">Submit Rating</button>
+      <button class="btn btn-danger" style="margin-top:8px" onclick="submitNotResolved()" data-i18n="btn_not_resolved">Not Resolved</button>
     </div>
   </div>
 
   <!-- Profile -->
   <div id="screen-profile" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1>Profile</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 data-i18n="screen_profile">Profile</h1>
     </div>
     <div class="form">
       <div style="text-align:center;padding:20px 0 16px">
@@ -415,18 +415,26 @@
         <div id="profile-station" style="color:var(--hint);font-size:13px;margin-top:2px"></div>
       </div>
       <div id="profile-phone-row" style="display:none;padding:12px 0;border-top:1px solid var(--secondary-bg);border-bottom:1px solid var(--secondary-bg);margin-bottom:24px">
-        <div style="font-size:12px;color:var(--hint);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Phone</div>
+        <div style="font-size:12px;color:var(--hint);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px" data-i18n="label_phone">Phone</div>
         <div id="profile-phone-value" style="font-size:15px"></div>
       </div>
       <div id="profile-share-phone-row" style="display:none;margin-bottom:16px">
-        <button class="btn" onclick="sharePhone()">Share Phone Number</button>
+        <button class="btn" onclick="sharePhone()" data-i18n="btn_share_phone">Share Phone Number</button>
       </div>
-      <div style="font-size:12px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Settings</div>
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;color:var(--hint);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px" data-i18n="label_language">Language</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="setLang('en')" id="lang-btn-en" style="flex:1">EN</button>
+          <button class="btn" onclick="setLang('ru')" id="lang-btn-ru" style="flex:1">РУС</button>
+          <button class="btn" onclick="setLang('ky')" id="lang-btn-ky" style="flex:1">КЫР</button>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px" data-i18n="label_settings">Settings</div>
       <div class="card" onclick="showChangeName()" style="cursor:pointer">
-        <div class="card-title">Change Name</div>
+        <div class="card-title" data-i18n="btn_change_name">Change Name</div>
       </div>
       <div class="card" onclick="showScreen('screen-change-password')" style="cursor:pointer;margin-top:8px">
-        <div class="card-title">Change Password</div>
+        <div class="card-title" data-i18n="btn_change_password">Change Password</div>
       </div>
     </div>
   </div>
@@ -434,41 +442,42 @@
   <!-- Change Name -->
   <div id="screen-change-name" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1>Change Name</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 data-i18n="screen_change_name">Change Name</h1>
     </div>
     <div class="form">
-      <input id="change-name-first" class="input" type="text" placeholder="First name">
-      <input id="change-name-last" class="input" type="text" placeholder="Last name">
+      <input id="change-name-first" class="input" type="text" placeholder="First name" data-i18n-placeholder="placeholder_first_name">
+      <input id="change-name-last" class="input" type="text" placeholder="Last name" data-i18n-placeholder="placeholder_last_name">
       <div id="change-name-error" class="error" style="display:none"></div>
-      <button class="btn" onclick="submitChangeName()">Save</button>
+      <button class="btn" onclick="submitChangeName()" data-i18n="btn_save">Save</button>
     </div>
   </div>
 
   <!-- Change Password -->
   <div id="screen-change-password" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="goBack()">&#8592; Back</button>
-      <h1>Change Password</h1>
+      <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
+      <h1 data-i18n="screen_change_password">Change Password</h1>
     </div>
     <div class="form">
       <div class="field">
-        <label>Current Password</label>
-        <input id="old-password" type="password" placeholder="Current password">
+        <label data-i18n="label_current_password">Current Password</label>
+        <input id="old-password" type="password" placeholder="Current password" data-i18n-placeholder="placeholder_current_password">
       </div>
       <div class="field">
-        <label>New Password</label>
-        <input id="new-password" type="password" placeholder="Min 6 characters">
+        <label data-i18n="label_new_password">New Password</label>
+        <input id="new-password" type="password" placeholder="Min 6 characters" data-i18n-placeholder="placeholder_new_password">
       </div>
       <div class="field">
-        <label>Confirm New Password</label>
-        <input id="confirm-password" type="password" placeholder="Repeat new password">
+        <label data-i18n="label_confirm_password">Confirm New Password</label>
+        <input id="confirm-password" type="password" placeholder="Repeat new password" data-i18n-placeholder="placeholder_repeat_password">
       </div>
-      <button class="btn btn-primary" onclick="submitChangePassword()">Save</button>
+      <button class="btn btn-primary" onclick="submitChangePassword()" data-i18n="btn_save">Save</button>
     </div>
   </div>
 
 </div>
+<script src="/static/i18n.js?v=1"></script>
 <script type="module" src="/static/app.js?v=27"></script>
 </body>
 </html>

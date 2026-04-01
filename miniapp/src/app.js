@@ -155,7 +155,7 @@ async function init() {
     await loadTickets();
     promptPhoneIfMissing();
   } catch (e) {
-    showError('Auth failed: ' + e.message);
+    showError(t('error_auth') + e.message);
   }
 }
 
@@ -175,8 +175,8 @@ window.submitRegister = async function() {
   const first_name = document.getElementById('register-first').value.trim();
   const last_name = document.getElementById('register-last').value.trim();
 
-  if (!token) { tgAlert('Please enter the invite token.'); return; }
-  if (!first_name) { tgAlert('Please enter your first name.'); return; }
+  if (!token) { tgAlert(t('msg_enter_token')); return; }
+  if (!first_name) { tgAlert(t('msg_enter_first_name')); return; }
 
   const initData = tg?.initData || '';
   try {
@@ -193,7 +193,7 @@ window.submitRegister = async function() {
 window.submitLinkAccount = async function() {
   const username = document.getElementById('link-username').value.trim();
   const password = document.getElementById('link-password').value;
-  if (!username || !password) { tgAlert('Please enter username and password.'); return; }
+  if (!username || !password) { tgAlert(t('msg_enter_username_password')); return; }
 
   const initData = tg?.initData || '';
   try {
@@ -215,13 +215,13 @@ window.submitLinkAccount = async function() {
 async function loadTickets() {
   showScreen('screen-tickets');
   const list = document.getElementById('tickets-list');
-  list.innerHTML = '<div class="loading">Loading...</div>';
+  list.innerHTML = `<div class="loading">${t('loading')}</div>`;
 
   try {
     const tickets = await api.getTickets();
     renderTicketList(tickets);
   } catch (e) {
-    list.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    list.innerHTML = `<div class="empty">${t('error_general')}${e.message}</div>`;
   }
 
   clearInterval(listPollInterval);
@@ -256,35 +256,35 @@ function renderTicketList(tickets) {
   const active = role === 'worker' ? tickets.filter(t => t.status !== 'resolved') : tickets;
 
   if (!active.length && !unrated.length) {
-    list.innerHTML = '<div class="empty">No tickets yet.</div>';
+    list.innerHTML = `<div class="empty">${t('msg_no_tickets')}</div>`;
     return;
   }
 
   let html = '';
 
   if (unrated.length) {
-    html += `<div style="padding:8px 16px 4px;font-size:13px;font-weight:600;color:var(--hint)">PENDING RATING</div>`;
-    html += unrated.map(t => `
-      <div class="card" onclick="openRateTicket(${t.id}, '${escHtml(t.title).replace(/'/g, "\\'")}')">
-        <div class="card-title">${escHtml(t.title)}</div>
-        <div class="card-meta" style="color:var(--button)">&#9733; Please rate this resolution</div>
+    html += `<div style="padding:8px 16px 4px;font-size:13px;font-weight:600;color:var(--hint)">${t('section_pending_rating')}</div>`;
+    html += unrated.map(tk => `
+      <div class="card" onclick="openRateTicket(${tk.id}, '${escHtml(tk.title).replace(/'/g, "\\'")}')">
+        <div class="card-title">${escHtml(tk.title)}</div>
+        <div class="card-meta" style="color:var(--button)">&#9733; ${t('btn_rate_resolution')}</div>
       </div>
     `).join('');
   }
 
   if (active.length) {
-    if (unrated.length) html += `<div style="padding:8px 16px 4px;font-size:13px;font-weight:600;color:var(--hint)">ACTIVE</div>`;
-    html += active.map(t => `
-      <div class="card" onclick="openTicket(${t.id})">
-        <div class="card-title">${escHtml(t.title)}</div>
-        ${role !== 'worker' && (t.station_name || t.company_name) ? `
-          <div class="card-meta" style="margin-top:2px">${[t.station_name, t.company_name].filter(Boolean).map(escHtml).join(' · ')}</div>
+    if (unrated.length) html += `<div style="padding:8px 16px 4px;font-size:13px;font-weight:600;color:var(--hint)">${t('section_active')}</div>`;
+    html += active.map(tk => `
+      <div class="card" onclick="openTicket(${tk.id})">
+        <div class="card-title">${escHtml(tk.title)}</div>
+        ${role !== 'worker' && (tk.station_name || tk.company_name) ? `
+          <div class="card-meta" style="margin-top:2px">${[tk.station_name, tk.company_name].filter(Boolean).map(escHtml).join(' · ')}</div>
         ` : ''}
         <div class="card-meta">
-          <span class="badge badge-${t.status}">${formatStatus(t.status)}</span>
-          &nbsp;${formatDate(t.created_at)}
+          <span class="badge badge-${tk.status}">${formatStatus(tk.status)}</span>
+          &nbsp;${formatDate(tk.created_at)}
         </div>
-        ${role !== 'worker' ? `<div class="card-meta" style="margin-top:4px">${t.tasks?.length || 0} task(s)</div>` : ''}
+        ${role !== 'worker' ? `<div class="card-meta" style="margin-top:4px">${tk.tasks?.length || 0} ${t('msg_tasks_count')}</div>` : ''}
       </div>
     `).join('');
   }
@@ -297,13 +297,13 @@ function renderTicketList(tickets) {
 window.openTicket = async function(id) {
   showScreen('screen-ticket-detail');
   const body = document.getElementById('ticket-detail-body');
-  body.innerHTML = '<div class="loading">Loading...</div>';
+  body.innerHTML = `<div class="loading">${t('loading')}</div>`;
 
   try {
     const ticket = await api.getTicket(id);
     renderTicketDetail(ticket);
   } catch (e) {
-    body.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    body.innerHTML = `<div class="empty">${t('error_general')}${e.message}</div>`;
     return;
   }
 
@@ -346,7 +346,7 @@ function renderTicketDetail(ticket) {
       <!-- Description -->
       ${ticket.description || ticket.photos?.length ? `
         <div class="detail-section">
-          ${ticket.description ? `<h3>Description</h3><div class="description-text">${escHtml(ticket.description)}</div>` : ''}
+          ${ticket.description ? `<h3>${t('section_description')}</h3><div class="description-text">${escHtml(ticket.description)}</div>` : ''}
           ${ticket.photos?.length ? `
             <div class="comment-photos" style="margin-top:${ticket.description ? '10px' : '0'}">
               ${ticket.photos.map(p => `<img class="comment-photo" src="${p.image}" onclick="openPhoto('${p.image}')">`).join('')}
@@ -356,21 +356,21 @@ function renderTicketDetail(ticket) {
       <!-- Tasks -->
       ${isITWorker ? `
         <div class="detail-section">
-          <h3>Tasks</h3>
-          ${ticket.tasks?.length ? ticket.tasks.map(t => `
+          <h3>${t('section_tasks')}</h3>
+          ${ticket.tasks?.length ? ticket.tasks.map(tk => `
             <div class="ticket-card">
               <div style="display:flex;justify-content:space-between;align-items:center">
-                <div class="ticket-worker">${escHtml(t.assigned_to_name)}</div>
-                <span class="badge badge-${t.status}">${formatStatus(t.status)}</span>
+                <div class="ticket-worker">${escHtml(tk.assigned_to_name)}</div>
+                <span class="badge badge-${tk.status}">${formatStatus(tk.status)}</span>
               </div>
-              ${t.notes ? `<div class="ticket-notes">${escHtml(t.notes)}</div>` : ''}
-              ${t.assigned_to === currentUser.id ? renderTaskActions(t) : ''}
+              ${tk.notes ? `<div class="ticket-notes">${escHtml(tk.notes)}</div>` : ''}
+              ${tk.assigned_to === currentUser.id ? renderTaskActions(tk) : ''}
             </div>
-          `).join('') : '<div class="empty" style="padding:10px">No tasks yet.</div>'}
+          `).join('') : `<div class="empty" style="padding:10px">${t('msg_no_tasks')}</div>`}
         </div>` : ''}
       ${isSupplyWorker && myTask ? `
         <div class="detail-section">
-          <h3>My Task</h3>
+          <h3>${t('section_my_task')}</h3>
           <div class="ticket-card">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <div class="ticket-worker">${escHtml(myTask.assigned_to_name)}</div>
@@ -383,7 +383,7 @@ function renderTicketDetail(ticket) {
 
       <!-- Comments -->
       <div class="detail-section" id="comments-section">
-        <h3>Comments</h3>
+        <h3>${t('section_comments')}</h3>
         ${renderComments(ticket.comments)}
       </div>
     </div>
@@ -393,10 +393,10 @@ function renderTicketDetail(ticket) {
     <div class="comment-input-area">
       ${isITWorker ? `
         <div class="comment-internal-toggle">
-          <label><input type="checkbox" id="comment-internal"> Internal (IT staff only)</label>
+          <label><input type="checkbox" id="comment-internal"> ${t('section_internal')}</label>
         </div>` : ''}
       <div class="comment-input-row">
-        <input id="comment-input" type="text" placeholder="Write a comment...">
+        <input id="comment-input" type="text" placeholder="${t('placeholder_comment')}">
         <label class="comment-photo-btn" title="Attach photo">
           &#128247;
           <input type="file" id="comment-photos" accept="image/*" multiple style="display:none">
@@ -409,21 +409,21 @@ function renderTicketDetail(ticket) {
     <!-- Worker rating (for resolved unrated tickets) -->
     ${role === 'worker' && ticket.status === 'resolved' && ticket.rating === null ? `
       <div style="padding:0 16px 16px">
-        <button class="btn btn-primary" onclick="openRateTicket(${ticket.id}, '${escHtml(ticket.title).replace(/'/g, "\\'")}')">Rate this resolution</button>
+        <button class="btn btn-primary" onclick="openRateTicket(${ticket.id}, '${escHtml(ticket.title).replace(/'/g, "\\'")}'">${t('btn_rate_resolution')}</button>
       </div>
     ` : ''}
 
     <!-- IT Worker actions -->
     ${isITWorker && ticket.status !== 'resolved' ? `
       <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px">
-        ${!ticket.tasks?.find(t => t.assigned_to === currentUser.id) ? `
-          <button class="btn btn-primary" onclick="assignSelf(${ticket.id})">Take this ticket</button>
+        ${!ticket.tasks?.find(tk => tk.assigned_to === currentUser.id) ? `
+          <button class="btn btn-primary" onclick="assignSelf(${ticket.id})">${t('btn_take_ticket')}</button>
         ` : ''}
         ${myTask && myTask.status !== 'done' ? `
-          <button class="btn btn-secondary" onclick="showDelegateForm(${ticket.id})">Delegate to another IT worker</button>
+          <button class="btn btn-secondary" onclick="showDelegateForm(${ticket.id})">${t('btn_delegate_ticket')}</button>
         ` : ''}
         ${canResolve(ticket) ? `
-          <button class="btn btn-danger" onclick="resolveTicket(${ticket.id})">Mark as Resolved</button>
+          <button class="btn btn-danger" onclick="resolveTicket(${ticket.id})">${t('btn_mark_resolved')}</button>
         ` : ''}
       </div>
     ` : ''}
@@ -435,19 +435,19 @@ function renderTicketDetail(ticket) {
 function renderTaskActions(task) {
   if (task.status === 'done') return '';
   const next = task.status === 'open' ? 'in_progress' : 'done';
-  const label = next === 'in_progress' ? 'Start working' : 'Mark my part done';
+  const label = next === 'in_progress' ? t('btn_start_working') : t('btn_mark_done');
   return `<button class="btn btn-primary" style="margin-top:8px" onclick="updateTask(${task.id}, '${next}')">
     ${label}
   </button>`;
 }
 
 function renderComments(comments) {
-  if (!comments?.length) return '<div class="empty" style="padding:10px">No comments yet.</div>';
+  if (!comments?.length) return `<div class="empty" style="padding:10px">${t('msg_no_comments')}</div>`;
   return comments.map(c => `
     <div class="comment ${c.is_internal ? 'comment-internal' : ''}">
       <div class="comment-author">
         ${escHtml(c.author_name)}
-        ${c.is_internal ? '<span class="comment-internal-badge">Internal</span>' : ''}
+        ${c.is_internal ? `<span class="comment-internal-badge">${t('section_internal_badge')}</span>` : ''}
       </div>
       ${c.text ? `<div class="comment-text">${escHtml(c.text)}</div>` : ''}
       ${c.photos?.length ? `
@@ -489,11 +489,11 @@ window.assignSelf = async function(ticketId) {
 };
 
 window.resolveTicket = async function(ticketId) {
-  const confirmed = await tgConfirm('Mark this ticket as resolved and send to Zammad?');
+  const confirmed = await tgConfirm(t('confirm_mark_resolved'));
   if (!confirmed) return;
   try {
     await api.resolveTicket(ticketId);
-    tgAlert('Ticket resolved and archived to Zammad.');
+    tgAlert(t('confirm_ticket_resolved'));
     await loadTickets();
     showScreen('screen-tickets');
   } catch (e) {
@@ -519,7 +519,7 @@ window.selectStar = function(value) {
 };
 
 window.submitRating = async function() {
-  if (!selectedStarRating) { tgAlert('Please select a star rating.'); return; }
+  if (!selectedStarRating) { tgAlert(t('msg_please_rate')); return; }
   const ticketId = document.getElementById('rate-ticket-id').value;
   try {
     await api.rateTicket(parseInt(ticketId), selectedStarRating);
@@ -531,7 +531,7 @@ window.submitRating = async function() {
 
 window.submitNotResolved = async function() {
   const ticketId = document.getElementById('rate-ticket-id').value;
-  const confirmed = await tgConfirm('Mark this ticket as not resolved?');
+  const confirmed = await tgConfirm(t('confirm_mark_not_resolved'));
   if (!confirmed) return;
   try {
     await api.rateTicket(parseInt(ticketId), 0);
@@ -578,12 +578,12 @@ window.showDelegateForm = async function(ticketId) {
   selectedDelegateWorkerId = null;
 
   const list = document.getElementById('delegate-worker-list');
-  list.innerHTML = '<div class="empty">Loading...</div>';
+  list.innerHTML = `<div class="empty">${t('loading')}</div>`;
 
   try {
     const workers = await api.getITWorkers(ticketId);
     if (!workers.length) {
-      list.innerHTML = '<div class="empty">No other IT workers available.</div>';
+      list.innerHTML = `<div class="empty">${t('msg_no_other_it_workers')}</div>`;
       return;
     }
     list.innerHTML = workers.map(w => `
@@ -592,7 +592,7 @@ window.showDelegateForm = async function(ticketId) {
       </div>
     `).join('');
   } catch (e) {
-    list.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    list.innerHTML = `<div class="empty">${t('error_general')}${e.message}</div>`;
   }
 };
 
@@ -610,7 +610,7 @@ window.submitDelegate = async function() {
   const notes = document.getElementById('delegate-notes').value.trim();
 
   if (!selectedDelegateWorkerId) {
-    tgAlert('Please select an IT worker.');
+    tgAlert(t('msg_select_worker'));
     return;
   }
 
@@ -648,7 +648,7 @@ window.showCreateTicket = async function() {
         stationField.style.display = '';
       }
     } catch (e) {
-      tgAlert('Could not load stations: ' + e.message);
+      tgAlert(t('error_general') + e.message);
     }
   }
 };
@@ -674,7 +674,7 @@ window.submitCreateTicket = async function() {
   const photos = photoInput ? [...photoInput.files] : [];
 
   if (!title) {
-    tgAlert('Please enter a title.');
+    tgAlert(t('msg_enter_title'));
     return;
   }
 
@@ -705,7 +705,7 @@ function escHtml(str) {
 }
 
 function formatStatus(s) {
-  return { open: 'Open', in_progress: 'In Progress', done: 'Done', resolved: 'Resolved' }[s] || s;
+  return { open: t('status_open'), in_progress: t('status_in_progress'), done: t('status_done'), resolved: t('status_resolved') }[s] || s;
 }
 
 function formatDate(iso) {
@@ -715,15 +715,15 @@ function formatDate(iso) {
 
 function formatRole(role) {
   return {
-    worker: 'Worker', station_manager: 'Station Manager', deputy: 'Deputy',
-    it_worker: 'IT Worker', it_manager: 'IT Manager', it_deputy: 'IT Deputy',
-    supply_worker: 'Supply Worker', admin: 'Administrator',
+    worker: t('role_worker'), station_manager: t('role_station_manager'), deputy: t('role_deputy'),
+    it_worker: t('role_it_worker'), it_manager: t('role_it_manager'), it_deputy: t('role_it_deputy'),
+    supply_worker: t('role_supply_worker'), admin: t('role_admin'),
   }[role] || role;
 }
 
 window.sharePhone = function() {
   if (!inTelegram || !tg.requestContact) {
-    tgAlert('Phone sharing is only available in the Telegram app.');
+    tgAlert(t('msg_phone_only_telegram'));
     return;
   }
   tg.requestContact(async (sent, event) => {
@@ -736,7 +736,7 @@ window.sharePhone = function() {
       currentUser.phone = phone;
       await showProfile();
     } catch (e) {
-      tgAlert('Could not save phone: ' + e.message);
+      tgAlert(t('msg_could_not_save_phone') + e.message);
     }
   });
 };
@@ -784,7 +784,7 @@ window.showProfile = async function() {
       if (shareRow) shareRow.style.display = inTelegram && tg.requestContact ? '' : 'none';
     }
   } catch (e) {
-    tgAlert('Could not load profile: ' + e.message);
+    tgAlert(t('msg_could_not_load_profile') + e.message);
   }
 };
 
@@ -812,7 +812,7 @@ window.showStationOrSelect = async function() {
       `).join('');
     }
   } catch (e) {
-    tgAlert('Error: ' + e.message);
+    tgAlert(t('error_general') + e.message);
   }
 };
 
@@ -837,39 +837,39 @@ window.showStationWorkers = async function() {
   if (btnInvite) btnInvite.style.display = isManager ? 'inline' : 'none';
 
   const list = document.getElementById('station-workers-list');
-  list.innerHTML = '<div class="loading">Loading...</div>';
+  list.innerHTML = `<div class="loading">${t('loading')}</div>`;
 
   try {
     const workers = await api.getStationWorkers(currentStationId);
     if (!workers.length) {
-      list.innerHTML = '<div class="empty">No workers yet. Share the invite link to add workers.</div>';
+      list.innerHTML = `<div class="empty">${t('msg_no_workers')}</div>`;
       return;
     }
     list.innerHTML = workers.map(w => `
       <div class="card" style="display:flex;align-items:center;justify-content:space-between">
         <div>
           <div class="card-title">${escHtml(w.name)}</div>
-          <div class="card-meta">@${escHtml(w.username)} · ${w.is_active ? 'Active' : '<span style="color:#dc3545">Deactivated</span>'}</div>
+          <div class="card-meta">@${escHtml(w.username)} · ${w.is_active ? t('status_active') : `<span style="color:#dc3545">${t('status_deactivated')}</span>`}</div>
         </div>
         ${w.is_active && isManager ? `
           <div style="display:flex;flex-direction:column;gap:4px">
-            <button class="btn btn-secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="promoteToDeputy(${w.id}, '${escHtml(w.name)}')">Deputy</button>
-            <button class="btn btn-danger" style="width:auto;padding:4px 10px;font-size:12px" onclick="removeWorker(${w.id}, '${escHtml(w.name)}')">Remove</button>
+            <button class="btn btn-secondary" style="width:auto;padding:4px 10px;font-size:12px" onclick="promoteToDeputy(${w.id}, '${escHtml(w.name)}')">${t('btn_deputy')}</button>
+            <button class="btn btn-danger" style="width:auto;padding:4px 10px;font-size:12px" onclick="removeWorker(${w.id}, '${escHtml(w.name)}')">${t('btn_remove')}</button>
           </div>
-        ` : w.is_active ? `<button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeWorker(${w.id}, '${escHtml(w.name)}')">Remove</button>` : ''}
+        ` : w.is_active ? `<button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeWorker(${w.id}, '${escHtml(w.name)}')">${t('btn_remove')}</button>` : ''}
       </div>
     `).join('');
   } catch (e) {
-    list.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    list.innerHTML = `<div class="empty">${t('error_general')}${e.message}</div>`;
   }
 };
 
 window.promoteToDeputy = async function(id, name) {
-  const confirmed = await tgConfirm(`Promote ${name} to deputy?`);
+  const confirmed = await tgConfirm(t('confirm_promote_deputy', { name }));
   if (!confirmed) return;
   try {
     await api.addStationDeputy({ worker_id: id, station_id: currentStationId });
-    tgAlert(`${name} is now a deputy.`);
+    tgAlert(name + t('msg_is_now_deputy'));
     await showStationWorkers();
   } catch (e) {
     tgAlert(e.message);
@@ -902,7 +902,7 @@ window.showInviteLink = async function() {
     }
     if (currentInviteStationId) await loadInviteLink(currentInviteStationId);
   } catch (e) {
-    tgAlert('Error: ' + e.message);
+    tgAlert(t('error_general') + e.message);
   }
 };
 
@@ -923,14 +923,14 @@ async function loadInviteLink(stationId) {
       noLink.style.display = '';
     }
   } catch (e) {
-    tgAlert('Error: ' + e.message);
+    tgAlert(t('error_general') + e.message);
   }
 }
 
 window.copyInviteLink = function() {
   if (!currentInviteLink) return;
   navigator.clipboard.writeText(currentInviteLink)
-    .then(() => tgAlert('Link copied to clipboard.'))
+    .then(() => tgAlert(t('msg_link_copied')))
     .catch(() => tgAlert(currentInviteLink));
 };
 
@@ -941,14 +941,14 @@ window.generateInviteLink = async function() {
     document.getElementById('invite-link-text').textContent = data.link;
     document.getElementById('invite-link-box').style.display = '';
     document.getElementById('invite-no-link').style.display = 'none';
-    tgAlert('New link generated. The old link no longer works.');
+    tgAlert(t('msg_new_link_generated'));
   } catch (e) {
     tgAlert(e.message);
   }
 };
 
 window.deactivateInviteLink = async function() {
-  const confirmed = await tgConfirm('Deactivate this link? Workers will no longer be able to join with it.');
+  const confirmed = await tgConfirm(t('confirm_deactivate_link'));
   if (!confirmed) return;
   try {
     await api.deleteStationInvite(currentInviteStationId);
@@ -961,7 +961,7 @@ window.deactivateInviteLink = async function() {
 };
 
 window.removeWorker = async function(id, name) {
-  const confirmed = await tgConfirm(`Deactivate ${name}?`);
+  const confirmed = await tgConfirm(t('confirm_deactivate_worker', { name }));
   if (!confirmed) return;
   try {
     await api.removeStationWorker(id);
@@ -989,7 +989,7 @@ window.submitChangeName = async function() {
   const last_name = document.getElementById('change-name-last').value.trim();
   const errEl = document.getElementById('change-name-error');
   if (!first_name) {
-    errEl.textContent = 'First name is required.';
+    errEl.textContent = t('msg_enter_first_name');
     errEl.style.display = '';
     return;
   }
@@ -1011,13 +1011,13 @@ window.submitChangePassword = async function() {
   const confirm = document.getElementById('confirm-password').value;
 
   if (new_password !== confirm) {
-    tgAlert('New passwords do not match.');
+    tgAlert(t('msg_password_mismatch'));
     return;
   }
 
   try {
     await api.changePassword(old_password, new_password);
-    tgAlert('Password changed successfully.');
+    tgAlert(t('msg_password_changed'));
     document.getElementById('old-password').value = '';
     document.getElementById('new-password').value = '';
     document.getElementById('confirm-password').value = '';
@@ -1056,10 +1056,10 @@ let currentManageType = null;
 let currentCompanyId = null;
 
 const MANAGE_CONFIG = {
-  it_worker:       { title: 'IT Workers',       addTitle: 'Add IT Worker',       apiGet: () => api.getManageITWorkers(currentCompanyId),       apiAdd: (d) => api.addManageITWorker(d),       apiRemove: (id) => api.removeManageITWorker(id) },
-  it_deputy:       { title: 'IT Deputies',      addTitle: null,                  apiGet: () => api.getManageITDeputies(currentCompanyId),      apiAdd: null,                                  apiRemove: (id) => api.demoteITDeputy(id) },
-  supply_worker:   { title: 'Supply Workers',    addTitle: 'Add Supply Worker',   apiGet: () => api.getManageSupplyWorkers(currentCompanyId),   apiAdd: (d) => api.addManageSupplyWorker(d),   apiRemove: (id) => api.removeManageSupplyWorker(id) },
-  station_manager: { title: 'Station Managers',  addTitle: 'Add Station Manager', apiGet: () => api.getManageStationManagers(currentCompanyId), apiAdd: (d) => api.addManageStationManager(d), apiRemove: (id) => api.removeManageStationManager(id) },
+  it_worker:       { titleKey: 'manage_it_workers',       addTitleKey: 'screen_add_staff', apiGet: () => api.getManageITWorkers(currentCompanyId),       apiAdd: (d) => api.addManageITWorker(d),       apiRemove: (id) => api.removeManageITWorker(id) },
+  it_deputy:       { titleKey: 'manage_it_deputies',      addTitleKey: null,               apiGet: () => api.getManageITDeputies(currentCompanyId),      apiAdd: null,                                  apiRemove: (id) => api.demoteITDeputy(id) },
+  supply_worker:   { titleKey: 'manage_supply_workers',   addTitleKey: 'screen_add_staff', apiGet: () => api.getManageSupplyWorkers(currentCompanyId),   apiAdd: (d) => api.addManageSupplyWorker(d),   apiRemove: (id) => api.removeManageSupplyWorker(id) },
+  station_manager: { titleKey: 'manage_station_managers', addTitleKey: 'screen_add_staff', apiGet: () => api.getManageStationManagers(currentCompanyId), apiAdd: (d) => api.addManageStationManager(d), apiRemove: (id) => api.removeManageStationManager(id) },
 };
 
 window.showCompanyOrManage = async function() {
@@ -1093,21 +1093,21 @@ function showManageHub(companyName) {
 window.showManageSection = async function(type) {
   currentManageType = type;
   const cfg = MANAGE_CONFIG[type];
-  document.getElementById('manage-staff-title').textContent = cfg.title;
+  document.getElementById('manage-staff-title').textContent = t(cfg.titleKey);
   // Show Invite button for roles that support role invites
   const inviteBtn = document.getElementById('btn-role-invite');
   if (inviteBtn) inviteBtn.style.display = ['it_worker', 'supply_worker', 'station_manager'].includes(type) ? '' : 'none';
   // Hide Add (+) button for sections that don't support adding directly (e.g. IT Deputies — promoted from IT Workers)
   const fab = document.querySelector('#screen-manage-staff .fab');
-  if (fab) fab.style.display = cfg.addTitle ? '' : 'none';
+  if (fab) fab.style.display = cfg.addTitleKey ? '' : 'none';
   showScreen('screen-manage-staff');
 
   const list = document.getElementById('manage-staff-list');
-  list.innerHTML = '<div class="loading">Loading...</div>';
+  list.innerHTML = `<div class="loading">${t('loading')}</div>`;
   try {
     const staff = await cfg.apiGet();
     if (!staff.length) {
-      list.innerHTML = '<div class="empty">No staff yet.</div>';
+      list.innerHTML = `<div class="empty">${t('msg_no_staff')}</div>`;
       return;
     }
     list.innerHTML = staff.map(u => {
@@ -1115,7 +1115,7 @@ window.showManageSection = async function(type) {
         ? u.stations.map(s => `
             <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
               <span style="font-size:13px;color:var(--hint)">${escHtml(s.name)}</span>
-              ${u.is_active ? `<button class="btn btn-danger" style="width:auto;padding:2px 8px;font-size:12px" onclick="removeFromStation(${s.id}, '${escHtml(s.name)}', '${escHtml(u.name)}')">Remove</button>` : ''}
+              ${u.is_active ? `<button class="btn btn-danger" style="width:auto;padding:2px 8px;font-size:12px" onclick="removeFromStation(${s.id}, '${escHtml(s.name)}', '${escHtml(u.name)}')">${t('btn_remove')}</button>` : ''}
             </div>`).join('')
         : '';
       return `
@@ -1123,25 +1123,25 @@ window.showManageSection = async function(type) {
           <div style="display:flex;align-items:center;justify-content:space-between">
             <div>
               <div class="card-title">${escHtml(u.name)}</div>
-              <div class="card-meta">@${escHtml(u.username)} · ${u.is_active ? 'Active' : '<span style="color:#dc3545">Deactivated</span>'}</div>
+              <div class="card-meta">@${escHtml(u.username)} · ${u.is_active ? t('status_active') : `<span style="color:#dc3545">${t('status_deactivated')}</span>`}</div>
             </div>
             ${u.is_active ? `
               <div style="display:flex;gap:6px">
-                ${currentManageType === 'station_manager' ? `<button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:13px" onclick="showAssignStation(${u.id}, '${escHtml(u.name)}')">+ Station</button>` : ''}
-                ${currentManageType === 'it_worker' ? `<button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:13px" onclick="promoteToITDeputy(${u.id}, '${escHtml(u.name)}')">Deputy</button>` : ''}
-                <button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeManageStaff(${u.id}, '${escHtml(u.name)}')">${currentManageType === 'it_deputy' ? 'Demote' : 'Remove all'}</button>
+                ${currentManageType === 'station_manager' ? `<button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:13px" onclick="showAssignStation(${u.id}, '${escHtml(u.name)}')">+ ${t('btn_assign_station')}</button>` : ''}
+                ${currentManageType === 'it_worker' ? `<button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:13px" onclick="promoteToITDeputy(${u.id}, '${escHtml(u.name)}')">${t('btn_deputy')}</button>` : ''}
+                <button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeManageStaff(${u.id}, '${escHtml(u.name)}')">${currentManageType === 'it_deputy' ? t('btn_demote') : t('btn_remove')}</button>
               </div>` : ''}
           </div>
           ${stationsHtml}
         </div>`;
     }).join('');
   } catch (e) {
-    list.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    list.innerHTML = `<div class="empty">${t('error_general')}${e.message}</div>`;
   }
 };
 
 window.removeFromStation = async function(stationId, stationName, managerName) {
-  const confirmed = await tgConfirm(`Remove ${managerName} from ${stationName}?`);
+  const confirmed = await tgConfirm(t('confirm_remove_from_station', { managerName, stationName }));
   if (!confirmed) return;
   try {
     await api.removeStationManager(stationId);
@@ -1153,7 +1153,7 @@ window.removeFromStation = async function(stationId, stationName, managerName) {
 
 window.removeManageStaff = async function(id, name) {
   const isDeputy = currentManageType === 'it_deputy';
-  const confirmed = await tgConfirm(isDeputy ? `Demote ${name} back to IT Worker?` : `Deactivate ${name}?`);
+  const confirmed = await tgConfirm(isDeputy ? t('confirm_demote_it_worker', { name }) : t('confirm_deactivate_manager', { name }));
   if (!confirmed) return;
   try {
     await MANAGE_CONFIG[currentManageType].apiRemove(id);
@@ -1164,11 +1164,11 @@ window.removeManageStaff = async function(id, name) {
 };
 
 window.promoteToITDeputy = async function(id, name) {
-  const confirmed = await tgConfirm(`Promote ${name} to IT Deputy?`);
+  const confirmed = await tgConfirm(t('confirm_promote_it_deputy', { name }));
   if (!confirmed) return;
   try {
     await api.promoteToITDeputy({ worker_id: id });
-    tgAlert(`${name} is now an IT Deputy.`);
+    tgAlert(name + t('msg_is_now_it_deputy'));
     await showManageSection(currentManageType);
   } catch (e) {
     tgAlert(e.message);
@@ -1177,7 +1177,7 @@ window.promoteToITDeputy = async function(id, name) {
 
 window.showAddStaff = async function() {
   const cfg = MANAGE_CONFIG[currentManageType];
-  document.getElementById('add-staff-title').textContent = cfg.addTitle;
+  document.getElementById('add-staff-title').textContent = cfg.addTitleKey ? t(cfg.addTitleKey) : '';
   document.getElementById('add-staff-first').value = '';
   document.getElementById('add-staff-last').value = '';
   document.getElementById('add-staff-username').value = '';
@@ -1192,14 +1192,14 @@ window.showAddStaff = async function() {
     try {
       const stations = await api.getEmptyStations(currentCompanyId);
       if (!stations.length) {
-        tgAlert('No empty stations available. All stations already have a manager.');
+        tgAlert(t('msg_no_empty_stations'));
         return;
       }
       const select = document.getElementById('add-staff-station');
       select.innerHTML = stations.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
       stationField.style.display = '';
     } catch (e) {
-      tgAlert('Could not load stations: ' + e.message);
+      tgAlert(t('error_general') + e.message);
       return;
     }
   }
@@ -1214,7 +1214,7 @@ window.submitAddStaff = async function() {
   const last_name = document.getElementById('add-staff-last').value.trim();
 
   if (!username || !password) {
-    tgAlert('Username and password are required.');
+    tgAlert(t('msg_username_password_required'));
     return;
   }
 
@@ -1228,7 +1228,7 @@ window.submitAddStaff = async function() {
 
   try {
     await MANAGE_CONFIG[currentManageType].apiAdd(data);
-    tgAlert(`Account created for ${first_name || username}.`);
+    tgAlert(t('msg_account_created') + (first_name || username));
     goBack();
     await showManageSection(currentManageType);
   } catch (e) {
@@ -1244,27 +1244,27 @@ window.showAssignStation = async function(managerId, managerName) {
   assignStationManagerId = managerId;
   document.getElementById('assign-station-manager-name').textContent = `Manager: ${managerName}`;
   const select = document.getElementById('assign-station-select');
-  select.innerHTML = '<option value="">Loading...</option>';
+  select.innerHTML = `<option value="">${t('loading')}</option>`;
   showScreen('screen-assign-station');
   try {
     const stations = await api.getEmptyStations(currentCompanyId);
     if (!stations.length) {
-      tgAlert('No empty stations available. All stations already have a manager.');
+      tgAlert(t('msg_no_empty_stations'));
       goBack();
       return;
     }
     select.innerHTML = stations.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
   } catch (e) {
-    select.innerHTML = '<option value="">Error loading stations</option>';
+    select.innerHTML = `<option value="">${t('error_general')}...</option>`;
   }
 };
 
 window.submitAssignStation = async function() {
   const stationId = document.getElementById('assign-station-select').value;
-  if (!stationId) { tgAlert('Please select a station.'); return; }
+  if (!stationId) { tgAlert(t('msg_select_station')); return; }
   try {
     await api.setStationManager(stationId, assignStationManagerId);
-    tgAlert('Station assigned successfully.');
+    tgAlert(t('msg_station_assigned'));
     goBack();
   } catch (e) {
     tgAlert(e.message);
@@ -1276,8 +1276,8 @@ window.submitAssignStation = async function() {
 let currentRoleInviteLink = '';
 
 window.showRoleInvite = async function() {
-  const roleLabels = { it_worker: 'IT Worker', supply_worker: 'Supply Worker', station_manager: 'Station Manager' };
-  document.getElementById('role-invite-title').textContent = `Invite ${roleLabels[currentManageType] || ''}`;
+  const roleLabels = { it_worker: t('role_it_worker'), supply_worker: t('role_supply_worker'), station_manager: t('role_station_manager') };
+  document.getElementById('role-invite-title').textContent = `${t('btn_invite')} ${roleLabels[currentManageType] || ''}`;
   document.getElementById('role-invite-result').style.display = 'none';
   currentRoleInviteLink = '';
 
@@ -1289,12 +1289,12 @@ window.showRoleInvite = async function() {
     try {
       const stations = await api.getEmptyStations(currentCompanyId);
       if (!stations.length) {
-        stationSelect.innerHTML = '<option value="">No empty stations available</option>';
+        stationSelect.innerHTML = `<option value="">${t('msg_no_empty_stations')}</option>`;
       } else {
         stationSelect.innerHTML = stations.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
       }
     } catch (e) {
-      stationSelect.innerHTML = '<option value="">Error loading stations</option>';
+      stationSelect.innerHTML = `<option value="">${t('error_general')}...</option>`;
     }
   } else {
     stationField.style.display = 'none';
@@ -1311,11 +1311,11 @@ async function loadRoleInviteList() {
     const invites = await api.getRoleInvites(currentCompanyId);
     const filtered = invites.filter(i => i.role === currentManageType);
     if (!filtered.length) { listEl.innerHTML = ''; return; }
-    listEl.innerHTML = '<div style="font-size:12px;color:var(--hint);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Unused links</div>' +
+    listEl.innerHTML = `<div style="font-size:12px;color:var(--hint);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">${t('section_unused_links')}</div>` +
       filtered.map(i => `
         <div class="card" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div style="font-size:13px;color:var(--hint);word-break:break-all;flex:1;margin-right:8px">${i.station_name ? escHtml(i.station_name) + ' · ' : ''}...${escHtml(i.token.slice(-8))}</div>
-          <button class="btn btn-danger" style="width:auto;padding:4px 10px;font-size:12px;flex-shrink:0" onclick="deleteRoleInvite(${i.id})">Delete</button>
+          <button class="btn btn-danger" style="width:auto;padding:4px 10px;font-size:12px;flex-shrink:0" onclick="deleteRoleInvite(${i.id})">${t('btn_remove')}</button>
         </div>
       `).join('');
   } catch (e) {
@@ -1328,7 +1328,7 @@ window.generateRoleInvite = async function() {
   if (currentCompanyId) data.company_id = currentCompanyId;
   if (currentManageType === 'station_manager') {
     const stationId = document.getElementById('role-invite-station').value;
-    if (!stationId) { tgAlert('Please select a station.'); return; }
+    if (!stationId) { tgAlert(t('msg_select_station')); return; }
     data.station_id = stationId;
   }
   try {
@@ -1345,14 +1345,14 @@ window.generateRoleInvite = async function() {
 window.copyRoleInviteLink = function() {
   if (!currentRoleInviteLink) return;
   if (navigator.clipboard) {
-    navigator.clipboard.writeText(currentRoleInviteLink).then(() => tgAlert('Link copied!'));
+    navigator.clipboard.writeText(currentRoleInviteLink).then(() => tgAlert(t('msg_link_copied_short')));
   } else {
     tgAlert(currentRoleInviteLink);
   }
 };
 
 window.deleteRoleInvite = async function(id) {
-  const confirmed = await tgConfirm('Delete this invite link?');
+  const confirmed = await tgConfirm(t('confirm_delete_invite'));
   if (!confirmed) return;
   try {
     await api.deleteRoleInvite(id);
@@ -1367,12 +1367,12 @@ window.deleteRoleInvite = async function(id) {
 window.showStationDeputies = async function() {
   showScreen('screen-station-deputies');
   const list = document.getElementById('station-deputies-list');
-  list.innerHTML = '<div class="loading">Loading...</div>';
+  list.innerHTML = `<div class="loading">${t('loading')}</div>`;
 
   try {
     const deputies = await api.getStationDeputies(currentStationId);
     if (!deputies.length) {
-      list.innerHTML = '<div class="empty">No deputies yet.</div>';
+      list.innerHTML = `<div class="empty">${t('msg_no_deputies')}</div>`;
       return;
     }
     list.innerHTML = deputies.map(d => `
@@ -1381,16 +1381,16 @@ window.showStationDeputies = async function() {
           <div class="card-title">${escHtml(d.name)}</div>
           <div class="card-meta">@${escHtml(d.username)}</div>
         </div>
-        <button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:13px" onclick="demoteToWorker(${d.id}, '${escHtml(d.name)}')">Worker</button>
+        <button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:13px" onclick="demoteToWorker(${d.id}, '${escHtml(d.name)}')">${t('role_worker')}</button>
       </div>
     `).join('');
   } catch (e) {
-    list.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+    list.innerHTML = `<div class="empty">${t('error_general')}${e.message}</div>`;
   }
 };
 
 window.demoteToWorker = async function(id, name) {
-  const confirmed = await tgConfirm(`Demote ${name} back to worker?`);
+  const confirmed = await tgConfirm(t('confirm_demote_deputy', { name }));
   if (!confirmed) return;
   try {
     await api.removeStationDeputy(id, currentStationId);
@@ -1406,12 +1406,12 @@ window.showAddDeputy = async function() {
     const active = workers.filter(w => w.is_active);
     const select = document.getElementById('deputy-worker-select');
     if (!active.length) {
-      tgAlert('No active workers to promote. Add workers first via invite link.');
+      tgAlert(t('msg_no_workers_to_promote'));
       return;
     }
     select.innerHTML = active.map(w => `<option value="${w.id}">${escHtml(w.name)} (@${escHtml(w.username)})</option>`).join('');
   } catch (e) {
-    tgAlert('Could not load workers: ' + e.message);
+    tgAlert(t('error_general') + e.message);
     return;
   }
   showScreen('screen-add-deputy');
@@ -1419,10 +1419,10 @@ window.showAddDeputy = async function() {
 
 window.submitPromoteDeputy = async function() {
   const workerId = document.getElementById('deputy-worker-select').value;
-  if (!workerId) { tgAlert('Please select a worker.'); return; }
+  if (!workerId) { tgAlert(t('msg_select_worker')); return; }
   try {
     await api.addStationDeputy({ worker_id: parseInt(workerId), station_id: currentStationId });
-    tgAlert('Worker promoted to deputy.');
+    tgAlert(t('msg_promoted_to_deputy'));
     goBack();
     await showStationDeputies();
   } catch (e) {
