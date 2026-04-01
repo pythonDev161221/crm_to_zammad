@@ -619,6 +619,9 @@ window.previewTicketPhotos = function(input) {
 };
 
 window.submitCreateTicket = async function() {
+  const btn = document.getElementById('btn-submit-ticket');
+  if (btn.disabled) return;
+
   const title = document.getElementById('new-ticket-title').value.trim();
   const description = document.getElementById('new-ticket-desc').value.trim();
   const photoInput = document.getElementById('new-ticket-photos');
@@ -637,11 +640,13 @@ window.submitCreateTicket = async function() {
     }
   }
 
+  btn.disabled = true;
   try {
     await api.createTicket(title, description, photos, stationId);
     await loadTickets();
     showScreen('screen-tickets');
   } catch (e) {
+    btn.disabled = false;
     tgAlert(e.message);
   }
 };
