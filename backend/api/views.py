@@ -147,7 +147,7 @@ class TicketResolveView(APIView):
             logger.warning(f'Zammad push failed for ticket #{ticket.pk}: {e}')
             # zammad_synced stays False, retry via management command
 
-        return Response(TicketSerializer(ticket).data)
+        return Response(TicketSerializer(ticket, context={'request': request}).data)
 
 
 class TicketRateView(APIView):
