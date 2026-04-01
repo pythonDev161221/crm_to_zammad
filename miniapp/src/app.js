@@ -14,7 +14,6 @@ function tgConfirm(msg) {
 let currentUser = null;
 let screenHistory = [];
 let currentStationId = null;
-let stationManagerStations = [];
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
@@ -708,7 +707,6 @@ function showError(msg) {
 window.showStationOrSelect = async function() {
   try {
     const stations = await api.getMyStations();
-    stationManagerStations = stations;
     if (stations.length === 1) {
       currentStationId = stations[0].id;
       showStationHub(stations[0].name);

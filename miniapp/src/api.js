@@ -48,6 +48,10 @@ async function request(method, path, body = null) {
   return res.status === 204 ? null : res.json();
 }
 
+function withCompany(path, companyId) {
+  return companyId ? `${path}?company_id=${companyId}` : path;
+}
+
 export const api = {
   // Auth
   telegramAuth: (initData) =>
@@ -82,23 +86,23 @@ export const api = {
   getMyCompanies: () => request('GET', '/my-companies/'),
 
   // IT Manager: manage staff
-  getManageITWorkers: (companyId) => request('GET', companyId ? `/manage/it-workers/?company_id=${companyId}` : '/manage/it-workers/'),
+  getManageITWorkers: (companyId) => request('GET', withCompany('/manage/it-workers/', companyId)),
   addManageITWorker: (data) => request('POST', '/manage/it-workers/', data),
   removeManageITWorker: (id) => request('DELETE', `/manage/it-workers/${id}/`),
 
-  getManageSupplyWorkers: (companyId) => request('GET', companyId ? `/manage/supply-workers/?company_id=${companyId}` : '/manage/supply-workers/'),
+  getManageSupplyWorkers: (companyId) => request('GET', withCompany('/manage/supply-workers/', companyId)),
   addManageSupplyWorker: (data) => request('POST', '/manage/supply-workers/', data),
   removeManageSupplyWorker: (id) => request('DELETE', `/manage/supply-workers/${id}/`),
 
-  getManageStationManagers: (companyId) => request('GET', companyId ? `/manage/station-managers/?company_id=${companyId}` : '/manage/station-managers/'),
+  getManageStationManagers: (companyId) => request('GET', withCompany('/manage/station-managers/', companyId)),
   addManageStationManager: (data) => request('POST', '/manage/station-managers/', data),
   removeManageStationManager: (id) => request('DELETE', `/manage/station-managers/${id}/`),
 
-  getManageITDeputies: (companyId) => request('GET', companyId ? `/manage/it-deputies/?company_id=${companyId}` : '/manage/it-deputies/'),
+  getManageITDeputies: (companyId) => request('GET', withCompany('/manage/it-deputies/', companyId)),
   promoteToITDeputy: (data) => request('POST', '/manage/it-deputies/', data),
   demoteITDeputy: (id) => request('DELETE', `/manage/it-deputies/${id}/`),
 
-  getManageStations: (companyId) => request('GET', companyId ? `/manage/stations/?company_id=${companyId}` : '/manage/stations/'),
+  getManageStations: (companyId) => request('GET', withCompany('/manage/stations/', companyId)),
   getEmptyStations: (companyId) => request('GET', companyId ? `/manage/stations/?company_id=${companyId}&empty=true` : '/manage/stations/?empty=true'),
   setStationManager: (stationId, userId) => request('POST', `/manage/stations/${stationId}/set-manager/`, { user_id: userId }),
   removeStationManager: (stationId) => request('DELETE', `/manage/stations/${stationId}/remove-manager/`),
@@ -137,7 +141,7 @@ export const api = {
   deleteStationInvite: (stationId) => request('DELETE', `/station/invite/${stationId ? `?station_id=${stationId}` : ''}`),
 
   // Role invites (IT manager)
-  getRoleInvites: (companyId) => request('GET', companyId ? `/manage/role-invite/?company_id=${companyId}` : '/manage/role-invite/'),
+  getRoleInvites: (companyId) => request('GET', withCompany('/manage/role-invite/', companyId)),
   createRoleInvite: (data) => request('POST', '/manage/role-invite/', data),
   deleteRoleInvite: (id) => request('DELETE', `/manage/role-invite/${id}/`),
 

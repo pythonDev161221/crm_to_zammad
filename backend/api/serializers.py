@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import serializers
 from users.models import User, Station
 from tasks.models import Ticket, Task, Comment, CommentPhoto, TicketPhoto
@@ -13,12 +14,11 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ('telegram_id', 'station_name', 'company_names')
 
     def _managed_stations(self, obj):
-        from django.db.models import Q
         return Station.objects.filter(Q(manager=obj) | Q(deputies=obj)).distinct()
 
     def get_station_name(self, obj):
         # Station managers/deputies: show all stations they manage
-        if obj.role in ('station_manager', 'deputy'):
+        if obj.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
             names = list(self._managed_stations(obj).values_list('name', flat=True))
             return ', '.join(names) if names else None
         # Workers: their own station
@@ -29,7 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
         if obj.companies.exists():
             return [c.name for c in obj.companies.all()]
         # Station managers/deputies: from their managed stations' companies
-        if obj.role in ('station_manager', 'deputy'):
+        if obj.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
             companies = set(
                 s.company.name for s in self._managed_stations(obj).select_related('company') if s.company
             )

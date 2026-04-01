@@ -1,21 +1,55 @@
 import logging
 
+from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import generics, status
+from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 logger = logging.getLogger(__name__)
 
-from tasks.models import Ticket, Task, Comment
-from users.models import User, StationInvite
+from tasks.models import Ticket, Task, Comment, TicketPhoto, CommentPhoto
+from users.models import User, Station, StationInvite, RoleInvite
+from zammad_bridge.agent_sync import sync_agent_created
 from zammad_bridge.client import push_to_zammad
 from .permissions import IsITWorker, IsITOrSupplyWorker, IsITManager, IsITManagerOrDeputy, IsStationManager, IsStationManagerOrDeputy, IsWorker, IsWorkerOrStationManager
 from .serializers import (
     TicketSerializer, TicketCreateSerializer,
     TaskSerializer, CommentSerializer, UserSerializer,
 )
+
+
+def _get_managed_stations(user):
+    return list(Station.objects.filter(Q(manager=user) | Q(deputies=user)).distinct())
+
+
+def _get_tickets_for_user(user, qs):
+    if user.role == User.Role.WORKER:
+        return Ticket.objects.filter(created_by=user).filter(
+            Q(status__in=[Ticket.Status.OPEN, Ticket.Status.IN_PROGRESS]) |
+            Q(status=Ticket.Status.RESOLVED, rating__isnull=True)
+        )
+    if user.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
+        station_ids = Station.objects.filter(
+            Q(manager=user) | Q(deputies=user)
+        ).values_list('id', flat=True)
+        return qs.filter(station_id__in=station_ids)
+    if user.role == User.Role.SUPPLY_WORKER:
+        return qs.filter(tasks__assigned_to=user).distinct()
+    if user.role in (User.Role.IT_WORKER, User.Role.IT_MANAGER, User.Role.IT_DEPUTY):
+        return qs.filter(
+            Q(station__company__in=user.companies.all()) |
+            Q(tasks__assigned_to=user)
+        ).distinct()
+    return qs  # admin: all non-resolved
+
+
+def _build_invite_link(token):
+    bot = getattr(settings, 'TELEGRAM_BOT_USERNAME', '')
+    return f'https://t.me/{bot}?startapp=inv_{token}' if bot else None
 
 
 class MeView(APIView):
@@ -45,40 +79,13 @@ class TicketListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         qs = Ticket.objects.exclude(status=Ticket.Status.RESOLVED)
-        if user.role == User.Role.WORKER:
-            from django.db.models import Q
-            return Ticket.objects.filter(created_by=user).filter(
-                Q(status__in=[Ticket.Status.OPEN, Ticket.Status.IN_PROGRESS]) |
-                Q(status=Ticket.Status.RESOLVED, rating__isnull=True)
-            )
-        if user.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
-            from django.db.models import Q
-            from users.models import Station
-            station_ids = Station.objects.filter(
-                Q(manager=user) | Q(deputies=user)
-            ).values_list('id', flat=True)
-            return qs.filter(station_id__in=station_ids)
-        if user.role == User.Role.SUPPLY_WORKER:
-            return qs.filter(tasks__assigned_to=user).distinct()
-        if user.role in (User.Role.IT_WORKER, User.Role.IT_MANAGER, User.Role.IT_DEPUTY):
-            from django.db.models import Q
-            user_companies = user.companies.all()
-            return qs.filter(
-                Q(station__company__in=user_companies) |
-                Q(tasks__assigned_to=user)
-            ).distinct()
-        return qs  # admin: all non-resolved
+        return _get_tickets_for_user(user, qs)
 
     def perform_create(self, serializer):
-        from tasks.models import TicketPhoto
-        from users.models import Station
-        from django.db.models import Q
-        from rest_framework.exceptions import ValidationError, PermissionDenied as DRFPermissionDenied
-
         user = self.request.user
 
         if user.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
-            stations = list(Station.objects.filter(Q(manager=user) | Q(deputies=user)).distinct())
+            stations = _get_managed_stations(user)
             if len(stations) == 1:
                 station = stations[0]
             else:
@@ -103,29 +110,7 @@ class TicketDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         user = self.request.user
         qs = Ticket.objects.exclude(status=Ticket.Status.RESOLVED)
-        if user.role == User.Role.WORKER:
-            from django.db.models import Q
-            return Ticket.objects.filter(created_by=user).filter(
-                Q(status__in=[Ticket.Status.OPEN, Ticket.Status.IN_PROGRESS]) |
-                Q(status=Ticket.Status.RESOLVED, rating__isnull=True)
-            )
-        if user.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
-            from django.db.models import Q
-            from users.models import Station
-            station_ids = Station.objects.filter(
-                Q(manager=user) | Q(deputies=user)
-            ).values_list('id', flat=True)
-            return qs.filter(station_id__in=station_ids)
-        if user.role == User.Role.SUPPLY_WORKER:
-            return qs.filter(tasks__assigned_to=user).distinct()
-        if user.role in (User.Role.IT_WORKER, User.Role.IT_MANAGER, User.Role.IT_DEPUTY):
-            from django.db.models import Q
-            user_companies = user.companies.all()
-            return qs.filter(
-                Q(station__company__in=user_companies) |
-                Q(tasks__assigned_to=user)
-            ).distinct()
-        return qs  # admin: all non-resolved
+        return _get_tickets_for_user(user, qs)
 
 
 class TicketResolveView(APIView):
@@ -188,8 +173,7 @@ class TaskCreateView(generics.CreateAPIView):
         assigned_to = serializer.validated_data.get('assigned_to')
         ticket_company = ticket.created_by.station.company if ticket.created_by.station else None
         if ticket_company and not assigned_to.companies.filter(pk=ticket_company.pk).exists():
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied('This IT worker is not assigned to this company.')
+            raise DRFPermissionDenied('This IT worker is not assigned to this company.')
         serializer.save(ticket=ticket)
 
 
@@ -217,28 +201,24 @@ class CommentCreateView(generics.CreateAPIView):
     serializer_class = CommentSerializer
 
     def perform_create(self, serializer):
-        from tasks.models import CommentPhoto
         ticket = generics.get_object_or_404(Ticket, pk=self.kwargs['ticket_pk'])
         user = self.request.user
         is_internal = serializer.validated_data.get('is_internal', False)
 
         if user.role == User.Role.DEPUTY:
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied('Deputies cannot post comments.')
+            raise DRFPermissionDenied('Deputies cannot post comments.')
 
         if user.role == User.Role.STATION_MANAGER:
-            from rest_framework.exceptions import PermissionDenied
             if ticket.status == Ticket.Status.RESOLVED:
-                raise PermissionDenied('Cannot comment on resolved tickets.')
+                raise DRFPermissionDenied('Cannot comment on resolved tickets.')
             if not ticket.created_by.station_id or \
                ticket.created_by.station_id not in user.managed_stations.values_list('id', flat=True):
-                raise PermissionDenied('You can only comment on tickets from your station.')
+                raise DRFPermissionDenied('You can only comment on tickets from your station.')
             if is_internal:
-                raise PermissionDenied('Station managers cannot post internal comments.')
+                raise DRFPermissionDenied('Station managers cannot post internal comments.')
 
         if is_internal and user.role in (User.Role.WORKER, User.Role.SUPPLY_WORKER):
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied('Workers cannot create internal comments.')
+            raise DRFPermissionDenied('Workers cannot create internal comments.')
 
         comment = serializer.save(ticket=ticket, author=user)
 
@@ -273,13 +253,8 @@ class ITWorkerListView(APIView):
 class StationWorkersView(APIView):
     permission_classes = [IsAuthenticated, IsStationManagerOrDeputy]
 
-    def _get_stations(self, user):
-        from users.models import Station
-        from django.db.models import Q
-        return list(Station.objects.filter(Q(manager=user) | Q(deputies=user)).distinct())
-
     def get(self, request):
-        stations = self._get_stations(request.user)
+        stations = _get_managed_stations(request.user)
         if not stations:
             return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
         station_id = request.query_params.get('station_id')
@@ -292,7 +267,7 @@ class StationWorkersView(APIView):
         return Response(data)
 
     def post(self, request):
-        stations = self._get_stations(request.user)
+        stations = _get_managed_stations(request.user)
         if not stations:
             return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
         station_id = request.data.get('station_id')
@@ -328,13 +303,8 @@ class StationWorkersView(APIView):
 class StationWorkerDeleteView(APIView):
     permission_classes = [IsAuthenticated, IsStationManagerOrDeputy]
 
-    def _get_stations(self, user):
-        from users.models import Station
-        from django.db.models import Q
-        return list(Station.objects.filter(Q(manager=user) | Q(deputies=user)).distinct())
-
     def delete(self, request, pk):
-        stations = self._get_stations(request.user)
+        stations = _get_managed_stations(request.user)
         if not stations:
             return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
         station_ids = [s.id for s in stations]
@@ -360,7 +330,6 @@ class MyCompaniesView(APIView):
 # ── IT Manager: manage company staff ──────────────────────────────────────────
 
 def _resolve_manage_company(user, company_id=None):
-    from rest_framework.exceptions import ValidationError, PermissionDenied as DRFPermissionDenied
     companies = list(user.companies.all())
     if not companies:
         raise DRFPermissionDenied('No companies assigned.')
@@ -375,7 +344,6 @@ def _resolve_manage_company(user, company_id=None):
 
 
 def _create_managed_user(data, role, company):
-    from rest_framework.exceptions import ValidationError
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
     if not username or not password:
@@ -408,7 +376,6 @@ class ManageITWorkersView(APIView):
         company = _resolve_manage_company(request.user, request.data.get('company_id'))
         worker = _create_managed_user(request.data, User.Role.IT_WORKER, company)
         try:
-            from zammad_bridge.agent_sync import sync_agent_created
             sync_agent_created(worker)
         except Exception as e:
             logger.warning(f'Zammad agent sync failed for new IT worker {worker.username}: {e}')
@@ -468,12 +435,9 @@ class ManageStationManagersView(APIView):
     permission_classes = [IsAuthenticated, IsITManagerOrDeputy]
 
     def _company_station_ids(self, user):
-        from users.models import Station
         return Station.objects.filter(company__in=user.companies.all()).values_list('id', flat=True)
 
     def get(self, request):
-        from django.db.models import Q
-        from users.models import Station
         companies = request.user.companies.all()
         company_id = request.query_params.get('company_id')
         if company_id:
@@ -498,7 +462,6 @@ class ManageStationManagersView(APIView):
         return Response(result)
 
     def post(self, request):
-        from users.models import Station
         companies = list(request.user.companies.all())
         if not companies:
             return Response({'detail': 'No companies assigned.'}, status=status.HTTP_403_FORBIDDEN)
@@ -534,8 +497,6 @@ class ManageStationManagerDeleteView(APIView):
     permission_classes = [IsAuthenticated, IsITManagerOrDeputy]
 
     def delete(self, request, pk):
-        from django.db.models import Q
-        from users.models import Station
         station_ids = ManageStationManagersView()._company_station_ids(request.user)
         try:
             manager = User.objects.filter(
@@ -569,7 +530,6 @@ class ManageITDeputiesView(APIView):
         return Response([{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active} for u in qs])
 
     def post(self, request):
-        from rest_framework.exceptions import ValidationError
         companies = list(request.user.companies.all())
         if not companies:
             return Response({'detail': 'No companies assigned.'}, status=status.HTTP_403_FORBIDDEN)
@@ -604,7 +564,6 @@ class ManageCompanyStationsView(APIView):
     permission_classes = [IsAuthenticated, IsITManagerOrDeputy]
 
     def get(self, request):
-        from users.models import Station
         companies = request.user.companies.all()
         company_id = request.query_params.get('company_id')
         if company_id:
@@ -619,7 +578,6 @@ class StationRemoveManagerView(APIView):
     permission_classes = [IsAuthenticated, IsITManagerOrDeputy]
 
     def delete(self, request, pk):
-        from users.models import Station
         companies = request.user.companies.all()
         try:
             station = Station.objects.get(pk=pk, company__in=companies)
@@ -645,7 +603,6 @@ class StationSetManagerView(APIView):
     permission_classes = [IsAuthenticated, IsITManagerOrDeputy]
 
     def post(self, request, pk):
-        from users.models import Station
         companies = request.user.companies.all()
         try:
             station = Station.objects.get(pk=pk, company__in=companies)
@@ -675,7 +632,6 @@ class RoleInviteView(APIView):
     permission_classes = [IsAuthenticated, IsITManager]
 
     def get(self, request):
-        from users.models import RoleInvite
         companies = request.user.companies.all()
         invites = RoleInvite.objects.filter(company__in=companies, is_used=False).select_related('company', 'station')
         return Response([{
@@ -689,8 +645,6 @@ class RoleInviteView(APIView):
         } for i in invites])
 
     def post(self, request):
-        from users.models import RoleInvite, Station
-        from rest_framework.exceptions import ValidationError
         role = request.data.get('role', '').strip()
         if role not in (RoleInvite.Role.IT_WORKER, RoleInvite.Role.SUPPLY_WORKER, RoleInvite.Role.STATION_MANAGER):
             raise ValidationError({'role': 'Invalid role.'})
@@ -705,13 +659,9 @@ class RoleInviteView(APIView):
             except Station.DoesNotExist:
                 raise ValidationError({'station_id': 'Station not found in your company.'})
         invite = RoleInvite.create(role=role, company=company, created_by=request.user, station=station)
-        from django.conf import settings
-        bot = getattr(settings, 'TELEGRAM_BOT_USERNAME', '')
-        link = f'https://t.me/{bot}?startapp=inv_{invite.token}' if bot else ''
-        return Response({'token': invite.token, 'link': link}, status=status.HTTP_201_CREATED)
+        return Response({'token': invite.token, 'link': _build_invite_link(invite.token)}, status=status.HTTP_201_CREATED)
 
     def delete(self, request, pk):
-        from users.models import RoleInvite
         companies = request.user.companies.all()
         try:
             invite = RoleInvite.objects.get(pk=pk, company__in=companies, is_used=False)
@@ -725,7 +675,6 @@ class StationDeputiesView(APIView):
     permission_classes = [IsAuthenticated, IsStationManager]  # primary manager only
 
     def _primary_stations(self, user):
-        from users.models import Station
         return list(Station.objects.filter(manager=user))
 
     def get(self, request):
@@ -789,7 +738,6 @@ class StationDeputyDeleteView(APIView):
     permission_classes = [IsAuthenticated, IsStationManager]
 
     def delete(self, request, pk):
-        from users.models import Station
         stations = list(Station.objects.filter(manager=request.user))
         if not stations:
             return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
@@ -815,20 +763,12 @@ class StationInviteView(APIView):
     permission_classes = [IsAuthenticated, IsStationManager]
 
     def _get_station(self, user, station_id=None):
-        from users.models import Station
         stations = list(Station.objects.filter(manager=user))
         if not stations:
             return None
         if station_id:
             return next((s for s in stations if s.id == int(station_id)), None)
         return stations[0]
-
-    def _build_link(self, token):
-        from django.conf import settings
-        bot = settings.TELEGRAM_BOT_USERNAME
-        if bot:
-            return f'https://t.me/{bot}?startapp=inv_{token}'
-        return None
 
     def get(self, request):
         station = self._get_station(request.user, request.query_params.get('station_id'))
@@ -837,14 +777,14 @@ class StationInviteView(APIView):
         invite = StationInvite.objects.filter(station=station, is_active=True).first()
         if not invite:
             return Response({'token': None, 'link': None})
-        return Response({'token': invite.token, 'link': self._build_link(invite.token)})
+        return Response({'token': invite.token, 'link': _build_invite_link(invite.token)})
 
     def post(self, request):
         station = self._get_station(request.user, request.data.get('station_id'))
         if not station:
             return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
         invite = StationInvite.create_for_station(station, request.user)
-        return Response({'token': invite.token, 'link': self._build_link(invite.token)}, status=status.HTTP_201_CREATED)
+        return Response({'token': invite.token, 'link': _build_invite_link(invite.token)}, status=status.HTTP_201_CREATED)
 
     def delete(self, request):
         station = self._get_station(request.user, request.query_params.get('station_id'))
@@ -858,8 +798,6 @@ class MyStationsView(APIView):
     permission_classes = [IsAuthenticated, IsStationManagerOrDeputy]
 
     def get(self, request):
-        from users.models import Station
-        from django.db.models import Q
         stations = Station.objects.filter(
             Q(manager=request.user) | Q(deputies=request.user)
         ).distinct()
