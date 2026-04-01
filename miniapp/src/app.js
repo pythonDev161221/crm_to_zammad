@@ -360,7 +360,7 @@ function renderTicketDetail(ticket) {
           &#128247;
           <input type="file" id="comment-photos" accept="image/*" multiple style="display:none">
         </label>
-        <button onclick="submitComment(${ticket.id})">&#10148;</button>
+        <button id="btn-submit-comment" onclick="submitComment(${ticket.id})">&#10148;</button>
       </div>
       <div id="comment-photo-preview" class="comment-photo-preview"></div>
     </div>` : ''}
@@ -501,6 +501,9 @@ window.submitNotResolved = async function() {
 };
 
 window.submitComment = async function(ticketId) {
+  const btn = document.getElementById('btn-submit-comment');
+  if (btn && btn.disabled) return;
+
   const input = document.getElementById('comment-input');
   const text = input.value.trim();
   const photoInput = document.getElementById('comment-photos');
@@ -509,6 +512,7 @@ window.submitComment = async function(ticketId) {
 
   if (!text && !photos.length) return;
 
+  if (btn) btn.disabled = true;
   try {
     await api.addComment(ticketId, text, isInternal, photos);
     input.value = '';
@@ -519,6 +523,7 @@ window.submitComment = async function(ticketId) {
     }
     await openTicket(ticketId);
   } catch (e) {
+    if (btn) btn.disabled = false;
     tgAlert(e.message);
   }
 };
