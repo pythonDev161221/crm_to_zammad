@@ -153,6 +153,7 @@ async function init() {
       currentUser.companies = await api.getMyCompanies().catch(() => []);
     }
     await loadTickets();
+    promptPhoneIfMissing();
   } catch (e) {
     showError('Auth failed: ' + e.message);
   }
@@ -183,6 +184,7 @@ window.submitRegister = async function() {
     setToken(auth.access, auth.refresh);
     currentUser = auth.user;
     await loadTickets();
+    promptPhoneIfMissing();
   } catch (e) {
     tgAlert(e.message);
   }
@@ -201,6 +203,7 @@ window.submitLinkAccount = async function() {
     if (currentUser.role === 'it_manager' || currentUser.role === 'it_deputy') {
       currentUser.companies = await api.getMyCompanies().catch(() => []);
     }
+    promptPhoneIfMissing();
     await loadTickets();
   } catch (e) {
     tgAlert(e.message);
@@ -718,6 +721,38 @@ function formatRole(role) {
   }[role] || role;
 }
 
+window.sharePhone = function() {
+  if (!inTelegram || !tg.requestContact) {
+    tgAlert('Phone sharing is only available in the Telegram app.');
+    return;
+  }
+  tg.requestContact(async (sent, contact) => {
+    if (!sent || !contact?.contact?.phone_number) return;
+    try {
+      await api.updateMe({ phone: contact.contact.phone_number });
+      currentUser.phone = contact.contact.phone_number;
+      await showProfile();
+    } catch (e) {
+      tgAlert('Could not save phone: ' + e.message);
+    }
+  });
+};
+
+async function promptPhoneIfMissing() {
+  if (!inTelegram || !tg.requestContact) return;
+  try {
+    const me = await api.getMe();
+    if (me.phone) return;
+    tg.requestContact(async (sent, contact) => {
+      if (!sent || !contact?.contact?.phone_number) return;
+      try {
+        await api.updateMe({ phone: contact.contact.phone_number });
+        if (currentUser) currentUser.phone = contact.contact.phone_number;
+      } catch (_) {}
+    });
+  } catch (_) {}
+}
+
 window.showProfile = async function() {
   showScreen('screen-profile');
   try {
@@ -732,12 +767,15 @@ window.showProfile = async function() {
     stationEl.textContent = parts.join(' · ');
     stationEl.style.display = parts.length ? '' : 'none';
     const phoneRow = document.getElementById('profile-phone-row');
+    const shareRow = document.getElementById('profile-share-phone-row');
     if (me.phone) {
       phoneRow.style.display = '';
       document.getElementById('profile-phone-value').innerHTML =
         `<a href="https://t.me/${encodeURIComponent(me.phone)}" style="color:var(--button)">${escHtml(me.phone)}</a>`;
+      if (shareRow) shareRow.style.display = 'none';
     } else {
       phoneRow.style.display = 'none';
+      if (shareRow) shareRow.style.display = inTelegram && tg.requestContact ? '' : 'none';
     }
   } catch (e) {
     tgAlert('Could not load profile: ' + e.message);
