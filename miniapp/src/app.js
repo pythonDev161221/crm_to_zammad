@@ -726,11 +726,14 @@ window.sharePhone = function() {
     tgAlert('Phone sharing is only available in the Telegram app.');
     return;
   }
-  tg.requestContact(async (sent, contact) => {
-    if (!sent || !contact?.contact?.phone_number) return;
+  tg.requestContact(async (sent, event) => {
+    if (!sent) return;
+    const phone = event?.responseUnsafe?.contact?.phone_number
+      || event?.contact?.phone_number;
+    if (!phone) return;
     try {
-      await api.updateMe({ phone: contact.contact.phone_number });
-      currentUser.phone = contact.contact.phone_number;
+      await api.updateMe({ phone });
+      currentUser.phone = phone;
       await showProfile();
     } catch (e) {
       tgAlert('Could not save phone: ' + e.message);
@@ -743,11 +746,14 @@ async function promptPhoneIfMissing() {
   try {
     const me = await api.getMe();
     if (me.phone) return;
-    tg.requestContact(async (sent, contact) => {
-      if (!sent || !contact?.contact?.phone_number) return;
+    tg.requestContact(async (sent, event) => {
+      if (!sent) return;
+      const phone = event?.responseUnsafe?.contact?.phone_number
+        || event?.contact?.phone_number;
+      if (!phone) return;
       try {
-        await api.updateMe({ phone: contact.contact.phone_number });
-        if (currentUser) currentUser.phone = contact.contact.phone_number;
+        await api.updateMe({ phone });
+        if (currentUser) currentUser.phone = phone;
       } catch (_) {}
     });
   } catch (_) {}
