@@ -10,7 +10,10 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'first_name', 'last_name', 'role', 'station', 'station_name', 'company_names', 'telegram_id', 'phone')
+        fields = (
+            'id', 'username', 'first_name', 'last_name', 'role',
+            'station', 'station_name', 'company_names', 'telegram_id', 'phone',
+        )
         read_only_fields = ('telegram_id', 'station_name', 'company_names')
 
     def _managed_stations(self, obj):
@@ -96,7 +99,8 @@ class TicketSerializer(serializers.ModelSerializer):
     def get_comments(self, obj):
         request = self.context.get('request')
         qs = obj.comments.prefetch_related('photos').all()
-        if request and request.user.role in (User.Role.WORKER, User.Role.SUPPLY_WORKER, User.Role.STATION_MANAGER, User.Role.DEPUTY):
+        non_it_roles = (User.Role.WORKER, User.Role.SUPPLY_WORKER, User.Role.STATION_MANAGER, User.Role.DEPUTY)
+        if request and request.user.role in non_it_roles:
             qs = qs.filter(is_internal=False)
         return CommentSerializer(qs, many=True, context=self.context).data
 

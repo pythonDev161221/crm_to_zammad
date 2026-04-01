@@ -9,17 +9,24 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-logger = logging.getLogger(__name__)
-
-from tasks.models import Ticket, Task, Comment, TicketPhoto, CommentPhoto
+from tasks.models import Ticket, Task, TicketPhoto, CommentPhoto
 from users.models import User, Station, StationInvite, RoleInvite
 from zammad_bridge.agent_sync import sync_agent_created
 from zammad_bridge.client import push_to_zammad
-from .permissions import IsITWorker, IsITOrSupplyWorker, IsITManager, IsITManagerOrDeputy, IsStationManager, IsStationManagerOrDeputy, IsWorker, IsWorkerOrStationManager
+from .permissions import (
+    IsITWorker, IsITOrSupplyWorker, IsITManager, IsITManagerOrDeputy,
+    IsStationManager, IsStationManagerOrDeputy, IsWorker, IsWorkerOrStationManager,
+)
 from .serializers import (
     TicketSerializer, TicketCreateSerializer,
     TaskSerializer, CommentSerializer, UserSerializer,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _user_dict(u):
+    return {'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active}
 
 
 def _get_managed_stations(user):
@@ -263,7 +270,10 @@ class StationWorkersView(APIView):
         else:
             station_ids = [s.id for s in stations]
         workers = User.objects.filter(station_id__in=station_ids, role=User.Role.WORKER)
-        data = [{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active, 'station': u.station.name if u.station else None} for u in workers]
+        data = [
+            {**_user_dict(u), 'station': u.station.name if u.station else None}
+            for u in workers
+        ]
         return Response(data)
 
     def post(self, request):
@@ -297,7 +307,7 @@ class StationWorkersView(APIView):
             role=User.Role.WORKER,
             station=station,
         )
-        return Response({'id': worker.id, 'username': worker.username, 'name': worker.get_full_name() or worker.username}, status=status.HTTP_201_CREATED)
+        return Response(_user_dict(worker), status=status.HTTP_201_CREATED)
 
 
 class StationWorkerDeleteView(APIView):
@@ -370,7 +380,7 @@ class ManageITWorkersView(APIView):
         if company_id:
             companies = companies.filter(pk=company_id)
         qs = User.objects.filter(role=User.Role.IT_WORKER, companies__in=companies).distinct()
-        return Response([{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active} for u in qs])
+        return Response([_user_dict(u) for u in qs])
 
     def post(self, request):
         company = _resolve_manage_company(request.user, request.data.get('company_id'))
@@ -379,7 +389,7 @@ class ManageITWorkersView(APIView):
             sync_agent_created(worker)
         except Exception as e:
             logger.warning(f'Zammad agent sync failed for new IT worker {worker.username}: {e}')
-        return Response({'id': worker.id, 'username': worker.username, 'name': worker.get_full_name() or worker.username}, status=status.HTTP_201_CREATED)
+        return Response(_user_dict(worker), status=status.HTTP_201_CREATED)
 
 
 class ManageITWorkerDeleteView(APIView):
@@ -407,12 +417,12 @@ class ManageSupplyWorkersView(APIView):
         if company_id:
             companies = companies.filter(pk=company_id)
         qs = User.objects.filter(role=User.Role.SUPPLY_WORKER, companies__in=companies).distinct()
-        return Response([{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active} for u in qs])
+        return Response([_user_dict(u) for u in qs])
 
     def post(self, request):
         company = _resolve_manage_company(request.user, request.data.get('company_id'))
         worker = _create_managed_user(request.data, User.Role.SUPPLY_WORKER, company)
-        return Response({'id': worker.id, 'username': worker.username, 'name': worker.get_full_name() or worker.username}, status=status.HTTP_201_CREATED)
+        return Response(_user_dict(worker), status=status.HTTP_201_CREATED)
 
 
 class ManageSupplyWorkerDeleteView(APIView):
@@ -490,7 +500,7 @@ class ManageStationManagersView(APIView):
             station.save(update_fields=['manager'])
         else:
             station.deputies.add(manager)
-        return Response({'id': manager.id, 'username': manager.username, 'name': manager.get_full_name() or manager.username}, status=status.HTTP_201_CREATED)
+        return Response(_user_dict(manager), status=status.HTTP_201_CREATED)
 
 
 class ManageStationManagerDeleteView(APIView):
@@ -505,7 +515,10 @@ class ManageStationManagerDeleteView(APIView):
                 Q(managed_stations__id__in=station_ids) | Q(deputy_stations__id__in=station_ids)
             ).distinct().get(pk=pk)
         except User.DoesNotExist:
-            return Response({'detail': 'Station manager not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {'detail': 'Station manager not found in your companies.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         # Remove from stations belonging to this IT manager's companies
         stations_to_remove = Station.objects.filter(id__in=station_ids)
         for station in stations_to_remove:
@@ -527,7 +540,7 @@ class ManageITDeputiesView(APIView):
     def get(self, request):
         companies = request.user.companies.all()
         qs = User.objects.filter(role=User.Role.IT_DEPUTY, companies__in=companies).distinct()
-        return Response([{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active} for u in qs])
+        return Response([_user_dict(u) for u in qs])
 
     def post(self, request):
         companies = list(request.user.companies.all())
@@ -537,12 +550,14 @@ class ManageITDeputiesView(APIView):
         if not worker_id:
             return Response({'detail': 'worker_id required.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            worker = User.objects.filter(pk=worker_id, role=User.Role.IT_WORKER, companies__in=companies).distinct().get()
+            worker = User.objects.filter(
+                pk=worker_id, role=User.Role.IT_WORKER, companies__in=companies,
+            ).distinct().get()
         except User.DoesNotExist:
             return Response({'detail': 'IT worker not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
         worker.role = User.Role.IT_DEPUTY
         worker.save(update_fields=['role'])
-        return Response({'id': worker.id, 'username': worker.username, 'name': worker.get_full_name() or worker.username}, status=status.HTTP_200_OK)
+        return Response(_user_dict(worker), status=status.HTTP_200_OK)
 
 
 class ManageITDeputyDemoteView(APIView):
@@ -618,7 +633,10 @@ class StationSetManagerView(APIView):
                 pk=user_id, role=User.Role.STATION_MANAGER, managed_stations__company__in=companies
             ).distinct().get()
         except User.DoesNotExist:
-            return Response({'detail': 'Station manager not found in your companies.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {'detail': 'Station manager not found in your companies.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         if station.manager is not None:
             return Response({'detail': 'This station already has a manager.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -659,7 +677,10 @@ class RoleInviteView(APIView):
             except Station.DoesNotExist:
                 raise ValidationError({'station_id': 'Station not found in your company.'})
         invite = RoleInvite.create(role=role, company=company, created_by=request.user, station=station)
-        return Response({'token': invite.token, 'link': _build_invite_link(invite.token)}, status=status.HTTP_201_CREATED)
+        return Response(
+            {'token': invite.token, 'link': _build_invite_link(invite.token)},
+            status=status.HTTP_201_CREATED,
+        )
 
     def delete(self, request, pk):
         companies = request.user.companies.all()
@@ -687,7 +708,7 @@ class StationDeputiesView(APIView):
         else:
             station_ids = [s.id for s in stations]
         deputies = User.objects.filter(role=User.Role.DEPUTY, deputy_stations__id__in=station_ids).distinct()
-        return Response([{'id': u.id, 'username': u.username, 'name': u.get_full_name() or u.username, 'is_active': u.is_active} for u in deputies])
+        return Response([_user_dict(u) for u in deputies])
 
     def post(self, request):
         stations = self._primary_stations(request.user)
@@ -714,7 +735,7 @@ class StationDeputiesView(APIView):
             worker.station = None
             worker.save(update_fields=['role', 'station'])
             station.deputies.add(worker)
-            return Response({'id': worker.id, 'username': worker.username, 'name': worker.get_full_name() or worker.username}, status=status.HTTP_201_CREATED)
+            return Response(_user_dict(worker), status=status.HTTP_201_CREATED)
         else:
             # Create new deputy
             username = request.data.get('username', '').strip()
@@ -731,7 +752,7 @@ class StationDeputiesView(APIView):
                 role=User.Role.DEPUTY,
             )
             station.deputies.add(deputy)
-            return Response({'id': deputy.id, 'username': deputy.username, 'name': deputy.get_full_name() or deputy.username}, status=status.HTTP_201_CREATED)
+            return Response(_user_dict(deputy), status=status.HTTP_201_CREATED)
 
 
 class StationDeputyDeleteView(APIView):
@@ -784,7 +805,10 @@ class StationInviteView(APIView):
         if not station:
             return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
         invite = StationInvite.create_for_station(station, request.user)
-        return Response({'token': invite.token, 'link': _build_invite_link(invite.token)}, status=status.HTTP_201_CREATED)
+        return Response(
+            {'token': invite.token, 'link': _build_invite_link(invite.token)},
+            status=status.HTTP_201_CREATED,
+        )
 
     def delete(self, request):
         station = self._get_station(request.user, request.query_params.get('station_id'))
@@ -815,7 +839,10 @@ class ChangePasswordView(APIView):
             return Response({'detail': 'Current password is incorrect.'}, status=status.HTTP_400_BAD_REQUEST)
 
         if len(new_password) < 6:
-            return Response({'detail': 'New password must be at least 6 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'detail': 'New password must be at least 6 characters.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         request.user.set_password(new_password)
         request.user.save()
