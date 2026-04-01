@@ -14,6 +14,7 @@ function tgConfirm(msg) {
 let currentUser = null;
 let screenHistory = [];
 let ticketPollInterval = null;
+let listPollInterval = null;
 let currentStationId = null;
 
 // ── Router ────────────────────────────────────────────────────────────────────
@@ -24,6 +25,10 @@ window.showScreen = function(id) {
   if (currentId === 'screen-ticket-detail' && id !== 'screen-ticket-detail') {
     clearInterval(ticketPollInterval);
     ticketPollInterval = null;
+  }
+  if (currentId === 'screen-tickets' && id !== 'screen-tickets') {
+    clearInterval(listPollInterval);
+    listPollInterval = null;
   }
   if (currentId && currentId !== id) screenHistory.push(currentId);
   if (id === 'screen-tickets') screenHistory = [];
@@ -42,6 +47,10 @@ window.goBack = function() {
   if (current?.id === 'screen-ticket-detail') {
     clearInterval(ticketPollInterval);
     ticketPollInterval = null;
+  }
+  if (current?.id === 'screen-tickets') {
+    clearInterval(listPollInterval);
+    listPollInterval = null;
   }
   const prev = screenHistory.pop();
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -211,6 +220,15 @@ async function loadTickets() {
   } catch (e) {
     list.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
   }
+
+  clearInterval(listPollInterval);
+  listPollInterval = setInterval(async () => {
+    try {
+      const tickets = await api.getTickets();
+      const active = document.querySelector('.screen.active');
+      if (active?.id === 'screen-tickets') renderTicketList(tickets);
+    } catch (_) {}
+  }, 5000);
 }
 
 function renderTicketList(tickets) {
