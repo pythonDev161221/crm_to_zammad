@@ -967,6 +967,7 @@ let currentCompanyId = null;
 
 const MANAGE_CONFIG = {
   it_worker:       { title: 'IT Workers',       addTitle: 'Add IT Worker',       apiGet: () => api.getManageITWorkers(currentCompanyId),       apiAdd: (d) => api.addManageITWorker(d),       apiRemove: (id) => api.removeManageITWorker(id) },
+  it_deputy:       { title: 'IT Deputies',      addTitle: null,                  apiGet: () => api.getManageITDeputies(currentCompanyId),      apiAdd: null,                                  apiRemove: (id) => api.demoteITDeputy(id) },
   supply_worker:   { title: 'Supply Workers',    addTitle: 'Add Supply Worker',   apiGet: () => api.getManageSupplyWorkers(currentCompanyId),   apiAdd: (d) => api.addManageSupplyWorker(d),   apiRemove: (id) => api.removeManageSupplyWorker(id) },
   station_manager: { title: 'Station Managers',  addTitle: 'Add Station Manager', apiGet: () => api.getManageStationManagers(currentCompanyId), apiAdd: (d) => api.addManageStationManager(d), apiRemove: (id) => api.removeManageStationManager(id) },
 };
@@ -1006,6 +1007,9 @@ window.showManageSection = async function(type) {
   // Show Invite button for roles that support role invites
   const inviteBtn = document.getElementById('btn-role-invite');
   if (inviteBtn) inviteBtn.style.display = ['it_worker', 'supply_worker', 'station_manager'].includes(type) ? '' : 'none';
+  // Hide Add (+) button for sections that don't support adding directly (e.g. IT Deputies — promoted from IT Workers)
+  const fab = document.querySelector('#screen-manage-staff .fab');
+  if (fab) fab.style.display = cfg.addTitle ? '' : 'none';
   showScreen('screen-manage-staff');
 
   const list = document.getElementById('manage-staff-list');
@@ -1034,7 +1038,8 @@ window.showManageSection = async function(type) {
             ${u.is_active ? `
               <div style="display:flex;gap:6px">
                 ${currentManageType === 'station_manager' ? `<button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:13px" onclick="showAssignStation(${u.id}, '${escHtml(u.name)}')">+ Station</button>` : ''}
-                <button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeManageStaff(${u.id}, '${escHtml(u.name)}')">Remove all</button>
+                ${currentManageType === 'it_worker' ? `<button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:13px" onclick="promoteToITDeputy(${u.id}, '${escHtml(u.name)}')">Deputy</button>` : ''}
+                <button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:13px" onclick="removeManageStaff(${u.id}, '${escHtml(u.name)}')">${currentManageType === 'it_deputy' ? 'Demote' : 'Remove all'}</button>
               </div>` : ''}
           </div>
           ${stationsHtml}
@@ -1057,10 +1062,23 @@ window.removeFromStation = async function(stationId, stationName, managerName) {
 };
 
 window.removeManageStaff = async function(id, name) {
-  const confirmed = await tgConfirm(`Deactivate ${name}?`);
+  const isDeputy = currentManageType === 'it_deputy';
+  const confirmed = await tgConfirm(isDeputy ? `Demote ${name} back to IT Worker?` : `Deactivate ${name}?`);
   if (!confirmed) return;
   try {
     await MANAGE_CONFIG[currentManageType].apiRemove(id);
+    await showManageSection(currentManageType);
+  } catch (e) {
+    tgAlert(e.message);
+  }
+};
+
+window.promoteToITDeputy = async function(id, name) {
+  const confirmed = await tgConfirm(`Promote ${name} to IT Deputy?`);
+  if (!confirmed) return;
+  try {
+    await api.promoteToITDeputy({ worker_id: id });
+    tgAlert(`${name} is now an IT Deputy.`);
     await showManageSection(currentManageType);
   } catch (e) {
     tgAlert(e.message);
