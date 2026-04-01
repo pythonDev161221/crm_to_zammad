@@ -89,16 +89,18 @@ class ZammadClient:
         group_ids_payload = {str(gid): ['full'] for gid in group_ids}
         self.put(f'/users/{agent_id}', {'group_ids': group_ids_payload})
 
-    def get_or_create_customer(self, user, organization_id=None):
-        results = self.get('/users/search', params={'query': user.username, 'limit': 10})
+    def get_or_create_station_customer(self, station, organization_id=None):
+        """Create/find a Zammad customer representing the station (not individual worker)."""
+        login = station.name.lower().replace(' ', '_')
+        results = self.get('/users/search', params={'query': login, 'limit': 10})
         for u in results:
-            if u.get('login', '').lower() == user.username.lower():
+            if u.get('login', '').lower() == login:
                 return u['login']
         payload = {
-            'firstname': user.first_name or user.username,
-            'lastname': user.last_name or '',
-            'login': user.username.lower(),
-            'email': user.email or f'{user.username.lower()}@internal.local',
+            'firstname': station.name,
+            'lastname': '',
+            'login': login,
+            'email': f'{login}@internal.local',
             'roles': ['Customer'],
             'active': True,
         }
@@ -106,12 +108,11 @@ class ZammadClient:
             payload['organization_id'] = organization_id
         try:
             result = self.post('/users', payload)
-            return result.get('login', user.username.lower())
+            return result.get('login', login)
         except Exception:
-            # User may exist with this login — search all users as fallback
             all_users = self.get('/users')
             for u in all_users:
-                if u.get('login', '').lower() == user.username.lower():
+                if u.get('login', '').lower() == login:
                     return u['login']
             raise
 
@@ -139,20 +140,41 @@ def push_to_zammad(ticket):
     group_id, group_full_name = client.get_or_create_group(company.name if company else 'Users')
 
     org_id = None
-    if station:
-        org_id = client.get_or_create_organization(station.name)
+    if company:
+        org_id = client.get_or_create_organization(company.name)
 
-    customer_login = client.get_or_create_customer(ticket.created_by, organization_id=org_id)
+    if station:
+        customer_login = client.get_or_create_station_customer(station, organization_id=org_id)
+    else:
+        # No station — fall back to worker as customer
+        worker_login = ticket.created_by.username.lower()
+        results = client.get('/users/search', params={'query': worker_login, 'limit': 10})
+        existing = next((u['login'] for u in results if u.get('login', '').lower() == worker_login), None)
+        if existing:
+            customer_login = existing
+        else:
+            result = client.post('/users', {
+                'firstname': ticket.created_by.first_name or ticket.created_by.username,
+                'lastname': ticket.created_by.last_name or '',
+                'login': worker_login,
+                'email': ticket.created_by.email or f'{worker_login}@internal.local',
+                'roles': ['Customer'],
+                'active': True,
+            })
+            customer_login = result.get('login', worker_login)
 
     owner_login = None
     if ticket.resolved_by:
-        owner_id = client.get_or_create_agent(ticket.resolved_by)
+        agent_id = client.get_or_create_agent(ticket.resolved_by)
+        client.set_agent_groups(agent_id, [group_id])
         owner_login = ticket.resolved_by.username
 
-    body = ticket.description or ticket.title
-    phone = ticket.created_by.phone
-    if phone:
-        body = f'Phone: {phone}\n\n{body}'
+    worker = ticket.created_by
+    worker_name = worker.get_full_name() or worker.username
+    body = f'Worker: {worker_name}\n'
+    if worker.phone:
+        body += f'Phone: {worker.phone}\n'
+    body += f'\n{ticket.description or ticket.title}'
     ticket_attachments = _photo_attachments(ticket.photos.all())
 
     article_payload = {
@@ -167,7 +189,6 @@ def push_to_zammad(ticket):
     ticket_payload = {
         'title': ticket.title,
         'group': group_full_name,
-        'organization': station.name if station else None,
         'customer': customer_login,
         'state': 'closed',
         'article': article_payload,
