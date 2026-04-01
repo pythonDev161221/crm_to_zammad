@@ -290,7 +290,8 @@ window.openTicket = async function(id) {
   ticketPollInterval = setInterval(async () => {
     try {
       const updated = await api.getTicket(id);
-      renderTicketDetail(updated);
+      const section = document.getElementById('comments-section');
+      if (section) section.innerHTML = renderComments(updated.comments);
     } catch (_) {}
   }, 5000);
 };
