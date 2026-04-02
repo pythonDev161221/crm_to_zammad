@@ -343,7 +343,7 @@ function renderTicketDetail(ticket) {
   const isITWorker = role === 'it_worker' || role === 'it_deputy' || role === 'it_manager' || role === 'admin';
   const isSupplyWorker = role === 'supply_worker';
   const isManager = role === 'station_manager' || role === 'deputy';
-  const canComment = !isManager;
+  const canComment = role !== 'deputy';
   const myTask = ticket.tasks?.find(t => t.assigned_to === currentUser.id && t.status !== 'cancelled');
 
   body.innerHTML = `
