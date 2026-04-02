@@ -13,6 +13,7 @@ urlpatterns = [
     # Tasks (assigned to IT workers within a ticket)
     path('tickets/<int:ticket_pk>/tasks/', views.TaskCreateView.as_view(), name='task-create'),
     path('tasks/<int:pk>/', views.TaskUpdateView.as_view(), name='task-update'),
+    path('tasks/<int:pk>/cancel/', views.TaskCancelView.as_view(), name='task-cancel'),
 
     # Comments
     path('tickets/<int:ticket_pk>/comments/', views.CommentCreateView.as_view(), name='comment-create'),

@@ -35,10 +35,15 @@ class Task(models.Model):
         OPEN = 'open', 'Open'
         IN_PROGRESS = 'in_progress', 'In Progress'
         DONE = 'done', 'Done'
+        CANCELLED = 'cancelled', 'Cancelled'
 
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='tasks')
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='tasks'
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name='created_tasks', null=True, blank=True
     )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
     notes = models.TextField(blank=True)

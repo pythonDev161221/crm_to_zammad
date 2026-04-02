@@ -132,7 +132,7 @@ class TicketResolveView(APIView):
         if ticket.status == Ticket.Status.RESOLVED:
             return Response({'detail': 'Ticket already resolved.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        tasks = ticket.tasks.all()
+        tasks = ticket.tasks.exclude(status=Task.Status.CANCELLED)
         if not tasks.exists() or tasks.exclude(status=Task.Status.DONE).exists():
             return Response({'detail': 'All tasks must be done before resolving.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -181,7 +181,7 @@ class TaskCreateView(generics.CreateAPIView):
         ticket_company = ticket.created_by.station.company if ticket.created_by.station else None
         if ticket_company and not assigned_to.companies.filter(pk=ticket_company.pk).exists():
             raise DRFPermissionDenied('This IT worker is not assigned to this company.')
-        serializer.save(ticket=ticket)
+        serializer.save(ticket=ticket, created_by=self.request.user)
 
 
 class TaskUpdateView(generics.UpdateAPIView):
@@ -201,6 +201,25 @@ class TaskUpdateView(generics.UpdateAPIView):
             serializer.save(finished_at=timezone.now())
         else:
             serializer.save()
+
+
+class TaskCancelView(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated, IsITOrSupplyWorker]
+
+    def get_queryset(self):
+        return Task.objects.filter(
+            Q(created_by=self.request.user) | Q(assigned_to=self.request.user)
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        task = self.get_object()
+        if task.status == Task.Status.DONE:
+            return Response({'detail': 'Cannot cancel a completed task.'}, status=status.HTTP_400_BAD_REQUEST)
+        if task.status == Task.Status.CANCELLED:
+            return Response({'detail': 'Task is already cancelled.'}, status=status.HTTP_400_BAD_REQUEST)
+        task.status = Task.Status.CANCELLED
+        task.save(update_fields=['status'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CommentCreateView(generics.CreateAPIView):

@@ -116,6 +116,7 @@ class TicketListTests(BaseSetup):
     def test_nobody_sees_resolved_tickets(self):
         ticket = self.make_ticket(self.worker)
         ticket.status = Ticket.Status.RESOLVED
+        ticket.rating = 5  # rated tickets are hidden from everyone including the worker
         ticket.save()
         for user in [self.worker, self.it1, self.manager, self.admin]:
             auth(self.client, user)
