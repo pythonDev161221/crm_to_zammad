@@ -522,12 +522,16 @@ window.assignSelf = async function(ticketId) {
 window.resolveTicket = async function(ticketId) {
   const confirmed = await tgConfirm(t('confirm_mark_resolved'));
   if (!confirmed) return;
+  const btn = document.querySelector(`button[onclick="resolveTicket(${ticketId})"]`);
+  const originalText = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
     await api.resolveTicket(ticketId);
     tgAlert(t('confirm_ticket_resolved'));
     await loadTickets();
     showScreen('screen-tickets');
   } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
     tgAlert(e.message);
   }
 };
