@@ -108,6 +108,7 @@ body {
 }
 
 .btn:active { opacity: 0.8; }
+.btn:disabled { opacity: 0.4; pointer-events: none; }
 .btn-primary { background: var(--button); color: var(--button-text); }
 .btn-secondary { background: var(--secondary-bg); color: var(--text); }
 .btn-danger { background: #dc3545; color: #fff; }
