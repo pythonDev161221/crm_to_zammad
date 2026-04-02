@@ -45,12 +45,12 @@ def _get_tickets_for_user(user, qs):
         ).values_list('id', flat=True)
         return qs.filter(station_id__in=station_ids)
     if user.role == User.Role.SUPPLY_WORKER:
-        return qs.filter(tasks__assigned_to=user).distinct()
+        return qs.filter(tasks__assigned_to=user).exclude(tasks__status=Task.Status.CANCELLED).distinct()
     if user.role in (User.Role.IT_WORKER, User.Role.IT_MANAGER, User.Role.IT_DEPUTY):
-        my_tasks = Task.objects.filter(ticket=OuterRef('pk'), assigned_to=user)
+        my_tasks = Task.objects.filter(ticket=OuterRef('pk'), assigned_to=user).exclude(status=Task.Status.CANCELLED)
         return qs.filter(
             Q(station__company__in=user.companies.all()) |
-            Q(tasks__assigned_to=user)
+            Q(tasks__assigned_to=user, tasks__status__in=[Task.Status.OPEN, Task.Status.IN_PROGRESS, Task.Status.DONE])
         ).distinct().annotate(has_my_task=Exists(my_tasks)).order_by('-has_my_task', '-created_at')
     return qs  # admin: all non-resolved
 
