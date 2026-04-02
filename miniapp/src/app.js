@@ -436,7 +436,7 @@ function renderTicketDetail(ticket) {
     <!-- IT Worker actions -->
     ${isITWorker && ticket.status !== 'resolved' ? `
       <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px">
-        ${!ticket.tasks?.find(tk => tk.assigned_to === currentUser.id && tk.status !== 'cancelled') ? `
+        ${!ticket.tasks?.find(tk => tk.status !== 'cancelled') ? `
           <button class="btn btn-primary" onclick="assignSelf(${ticket.id})">${t('btn_take_ticket')}</button>
         ` : ''}
         ${myTask && myTask.status !== 'done' ? `
