@@ -88,12 +88,13 @@ class TicketSerializer(serializers.ModelSerializer):
     created_by_phone = serializers.CharField(source='created_by.phone', read_only=True)
     station_name = serializers.CharField(source='station.name', default=None, read_only=True)
     company_name = serializers.CharField(source='station.company.name', default=None, read_only=True)
+    has_my_task = serializers.BooleanField(default=False, read_only=True)
 
     class Meta:
         model = Ticket
         fields = ('id', 'title', 'description', 'status', 'created_by', 'created_by_name',
                   'created_by_phone', 'station_name', 'company_name', 'photos', 'tasks',
-                  'comments', 'created_at', 'resolved_at', 'rating')
+                  'comments', 'created_at', 'resolved_at', 'rating', 'has_my_task')
         read_only_fields = ('created_by', 'created_at', 'resolved_at', 'rating')
 
     def get_comments(self, obj):

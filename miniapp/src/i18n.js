@@ -115,6 +115,8 @@ const TRANSLATIONS = {
     // Sections
     section_pending_rating: "PENDING RATING",
     section_active: "ACTIVE",
+    section_my_tasks: "MY TASKS",
+    section_other_tickets: "OTHER TICKETS",
     section_description: "Description",
     section_tasks: "Tasks",
     section_my_task: "My Task",
@@ -303,6 +305,8 @@ const TRANSLATIONS = {
     // Sections
     section_pending_rating: "ОЖИДАЮТ ОЦЕНКИ",
     section_active: "АКТИВНЫЕ",
+    section_my_tasks: "МОИ ЗАДАЧИ",
+    section_other_tickets: "ДРУГИЕ ЗАЯВКИ",
     section_description: "Описание",
     section_tasks: "Задачи",
     section_my_task: "Моя задача",
@@ -491,6 +495,8 @@ const TRANSLATIONS = {
     // Sections
     section_pending_rating: "БАА БЕРҮҮ КҮТҮЛҮҮДӨ",
     section_active: "АКТИВДҮҮ",
+    section_my_tasks: "МЕНИН ТАПШЫРМАЛАРЫМ",
+    section_other_tickets: "БАШКА ӨТҮНҮЧТӨР",
     section_description: "Сүрөттөмө",
     section_tasks: "Тапшырмалар",
     section_my_task: "Менин тапшырмам",

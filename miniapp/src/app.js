@@ -274,7 +274,16 @@ function renderTicketList(tickets) {
 
   if (active.length) {
     if (unrated.length) html += `<div style="padding:8px 16px 4px;font-size:13px;font-weight:600;color:var(--hint)">${t('section_active')}</div>`;
-    html += active.map(tk => `
+
+    const isIT = role === 'it_worker' || role === 'it_manager' || role === 'it_deputy';
+    const myTickets = isIT ? active.filter(tk => tk.has_my_task) : [];
+    const otherTickets = isIT ? active.filter(tk => !tk.has_my_task) : active;
+
+    if (isIT && myTickets.length) {
+      html += `<div style="padding:8px 16px 4px;font-size:13px;font-weight:600;color:var(--hint)">${t('section_my_tasks')}</div>`;
+    }
+
+    const renderCard = tk => `
       <div class="card" onclick="openTicket(${tk.id})">
         <div class="card-title">${escHtml(tk.title)}</div>
         ${role !== 'worker' && (tk.station_name || tk.company_name) ? `
@@ -286,7 +295,15 @@ function renderTicketList(tickets) {
         </div>
         ${role !== 'worker' ? `<div class="card-meta" style="margin-top:4px">${tk.tasks?.length || 0} ${t('msg_tasks_count')}</div>` : ''}
       </div>
-    `).join('');
+    `;
+
+    html += myTickets.map(renderCard).join('');
+
+    if (isIT && otherTickets.length) {
+      html += `<div style="padding:8px 16px 4px;font-size:13px;font-weight:600;color:var(--hint)">${t('section_other_tickets')}</div>`;
+    }
+
+    html += otherTickets.map(renderCard).join('');
   }
 
   list.innerHTML = html;

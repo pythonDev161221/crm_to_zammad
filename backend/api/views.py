@@ -1,7 +1,7 @@
 import logging
 
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied, ValidationError
@@ -47,10 +47,11 @@ def _get_tickets_for_user(user, qs):
     if user.role == User.Role.SUPPLY_WORKER:
         return qs.filter(tasks__assigned_to=user).distinct()
     if user.role in (User.Role.IT_WORKER, User.Role.IT_MANAGER, User.Role.IT_DEPUTY):
+        my_tasks = Task.objects.filter(ticket=OuterRef('pk'), assigned_to=user)
         return qs.filter(
             Q(station__company__in=user.companies.all()) |
             Q(tasks__assigned_to=user)
-        ).distinct()
+        ).distinct().annotate(has_my_task=Exists(my_tasks)).order_by('-has_my_task', '-created_at')
     return qs  # admin: all non-resolved
 
 
