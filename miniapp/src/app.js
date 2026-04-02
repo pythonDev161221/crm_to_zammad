@@ -480,8 +480,9 @@ function renderComments(comments) {
 }
 
 function canResolve(ticket) {
-  if (!ticket.tasks?.length) return false;
-  return ticket.tasks.every(t => t.status === 'done');
+  const active = ticket.tasks?.filter(t => t.status !== 'cancelled') ?? [];
+  if (!active.length) return false;
+  return active.every(t => t.status === 'done');
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
