@@ -76,8 +76,8 @@ class TaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ('id', 'assigned_to', 'assigned_to_name', 'status', 'notes', 'started_at', 'finished_at')
-        read_only_fields = ('started_at', 'finished_at')
+        fields = ('id', 'assigned_to', 'assigned_to_name', 'created_by', 'status', 'notes', 'started_at', 'finished_at')
+        read_only_fields = ('created_by', 'started_at', 'finished_at')
 
 
 class TicketSerializer(serializers.ModelSerializer):

@@ -112,6 +112,7 @@ export const api = {
   // Tasks (assigned to IT workers within a ticket)
   createTask: (ticketId, data) => request('POST', `/tickets/${ticketId}/tasks/`, data),
   updateTask: (id, data) => request('PATCH', `/tasks/${id}/`, data),
+  cancelTask: (id) => request('DELETE', `/tasks/${id}/cancel/`),
 
   // Comments
   addComment: (ticketId, text, isInternal, photos) => {
