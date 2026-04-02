@@ -344,7 +344,7 @@ function renderTicketDetail(ticket) {
   const isSupplyWorker = role === 'supply_worker';
   const isManager = role === 'station_manager' || role === 'deputy';
   const canComment = !isManager;
-  const myTask = ticket.tasks?.find(t => t.assigned_to === currentUser.id);
+  const myTask = ticket.tasks?.find(t => t.assigned_to === currentUser.id && t.status !== 'cancelled');
 
   body.innerHTML = `
     <div class="detail-body">
@@ -436,7 +436,7 @@ function renderTicketDetail(ticket) {
     <!-- IT Worker actions -->
     ${isITWorker && ticket.status !== 'resolved' ? `
       <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px">
-        ${!ticket.tasks?.find(tk => tk.assigned_to === currentUser.id) ? `
+        ${!ticket.tasks?.find(tk => tk.assigned_to === currentUser.id && tk.status !== 'cancelled') ? `
           <button class="btn btn-primary" onclick="assignSelf(${ticket.id})">${t('btn_take_ticket')}</button>
         ` : ''}
         ${myTask && myTask.status !== 'done' ? `
