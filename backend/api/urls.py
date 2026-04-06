@@ -55,4 +55,8 @@ urlpatterns = [
 
     # Change password
     path('auth/change-password/', views.ChangePasswordView.as_view(), name='change-password'),
+
+    # Education
+    path('education/', views.EducationListCreateView.as_view(), name='education-list'),
+    path('education/<int:pk>/', views.EducationDeleteView.as_view(), name='education-delete'),
 ]

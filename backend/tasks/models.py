@@ -81,3 +81,26 @@ class TicketPhoto(models.Model):
 
     def __str__(self):
         return f'Photo for Ticket #{self.ticket_id}'
+
+
+class EducationItem(models.Model):
+    class ItemType(models.TextChoices):
+        FILE = 'file', 'File'
+        VIDEO_LINK = 'video_link', 'Video Link'
+
+    company = models.ForeignKey(
+        'users.Company', on_delete=models.CASCADE, related_name='education_items'
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    item_type = models.CharField(max_length=20, choices=ItemType.choices)
+    file = models.FileField(upload_to='education/', null=True, blank=True)
+    url = models.URLField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='education_items'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'[{self.item_type}] {self.title} ({self.company})'

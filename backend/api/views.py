@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from tasks.models import Ticket, Task, TicketPhoto, CommentPhoto
+from tasks.models import Ticket, Task, TicketPhoto, CommentPhoto, EducationItem
 from users.models import User, Station, StationInvite, RoleInvite
 from zammad_bridge.agent_sync import sync_agent_created
 from zammad_bridge.client import push_to_zammad
@@ -20,6 +20,7 @@ from .permissions import (
 from .serializers import (
     TicketSerializer, TicketCreateSerializer,
     TaskSerializer, CommentSerializer, UserSerializer,
+    EducationItemSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -867,3 +868,103 @@ class ChangePasswordView(APIView):
         request.user.set_password(new_password)
         request.user.save()
         return Response({'detail': 'Password changed successfully.'})
+
+
+# ── Education ─────────────────────────────────────────────────────────────────
+
+def _education_company_ids(user):
+    """Return list of company PKs the user can read education items from."""
+    from users.models import Company
+    if user.role == User.Role.ADMIN:
+        return list(Company.objects.values_list('id', flat=True))
+    if user.role in (User.Role.IT_WORKER, User.Role.IT_DEPUTY, User.Role.IT_MANAGER):
+        return list(user.companies.values_list('id', flat=True))
+    if user.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
+        return list(
+            Station.objects.filter(Q(manager=user) | Q(deputies=user))
+            .values_list('company_id', flat=True).distinct()
+        )
+    if user.role == User.Role.WORKER:
+        if user.station and user.station.company_id:
+            return [user.station.company_id]
+    return []
+
+
+class EducationListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role == User.Role.SUPPLY_WORKER:
+            raise DRFPermissionDenied('Not available for supply workers.')
+        company_ids = _education_company_ids(request.user)
+        qs = EducationItem.objects.filter(company_id__in=company_ids).select_related('company', 'created_by')
+        company_id = request.query_params.get('company_id')
+        if company_id:
+            qs = qs.filter(company_id=company_id)
+        qs = qs.order_by('-created_at')
+        return Response(EducationItemSerializer(qs, many=True, context={'request': request}).data)
+
+    def post(self, request):
+        user = request.user
+        if user.role not in (User.Role.IT_WORKER, User.Role.IT_DEPUTY, User.Role.IT_MANAGER, User.Role.ADMIN):
+            raise DRFPermissionDenied('Only IT staff can upload education materials.')
+
+        title = request.data.get('title', '').strip()
+        if not title:
+            raise ValidationError({'title': 'Title is required.'})
+
+        item_type = request.data.get('item_type', '').strip()
+        if item_type not in (EducationItem.ItemType.FILE, EducationItem.ItemType.VIDEO_LINK):
+            raise ValidationError({'item_type': 'Must be "file" or "video_link".'})
+
+        company_id = request.data.get('company_id')
+        allowed_ids = _education_company_ids(user)
+        if not company_id:
+            if len(allowed_ids) == 1:
+                company_id = allowed_ids[0]
+            else:
+                raise ValidationError({'company_id': 'company_id is required.'})
+        else:
+            company_id = int(company_id)
+            if company_id not in allowed_ids:
+                raise DRFPermissionDenied('Company not in your scope.')
+
+        from users.models import Company
+        company = Company.objects.get(pk=company_id)
+        description = request.data.get('description', '')
+        file_obj = request.FILES.get('file')
+        url = request.data.get('url', '').strip()
+
+        if item_type == EducationItem.ItemType.FILE and not file_obj:
+            raise ValidationError({'file': 'File is required for item_type "file".'})
+        if item_type == EducationItem.ItemType.VIDEO_LINK and not url:
+            raise ValidationError({'url': 'URL is required for item_type "video_link".'})
+
+        item = EducationItem.objects.create(
+            company=company,
+            title=title,
+            description=description,
+            item_type=item_type,
+            file=file_obj,
+            url=url,
+            created_by=user,
+        )
+        return Response(
+            EducationItemSerializer(item, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class EducationDeleteView(APIView):
+    permission_classes = [IsAuthenticated, IsITWorker]
+
+    def delete(self, request, pk):
+        allowed_ids = _education_company_ids(request.user)
+        try:
+            item = EducationItem.objects.get(pk=pk, company_id__in=allowed_ids)
+        except EducationItem.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if item.file:
+            item.file.delete(save=False)
+        item.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

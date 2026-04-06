@@ -1,7 +1,7 @@
 from django.db.models import Q
 from rest_framework import serializers
 from users.models import User, Station
-from tasks.models import Ticket, Task, Comment, CommentPhoto, TicketPhoto
+from tasks.models import Ticket, Task, Comment, CommentPhoto, TicketPhoto, EducationItem
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -110,3 +110,28 @@ class TicketCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
         fields = ('title', 'description')
+
+
+class EducationItemSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.SerializerMethodField()
+    company_name = serializers.CharField(source='company.name', read_only=True)
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EducationItem
+        fields = ('id', 'title', 'description', 'item_type', 'file_url', 'url',
+                  'company', 'company_name', 'created_by', 'created_by_name', 'created_at')
+        read_only_fields = ('created_by', 'created_at')
+
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return obj.created_by.get_full_name() or obj.created_by.username
+        return ''
+
+    def get_file_url(self, obj):
+        if obj.file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.file.url)
+            return obj.file.url
+        return None

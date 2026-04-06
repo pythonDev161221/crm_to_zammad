@@ -246,6 +246,9 @@ function renderTicketList(tickets) {
 
   const btnManage = document.getElementById('btn-manage');
   btnManage.style.display = (role === 'it_manager' || role === 'it_deputy') ? 'inline' : 'none';
+
+  const btnEducation = document.getElementById('btn-education');
+  if (btnEducation) btnEducation.style.display = role !== 'supply_worker' ? 'inline' : 'none';
   const itOnlyCards = ['manage-card-it-worker', 'manage-card-supply-worker'];
   itOnlyCards.forEach(id => {
     const el = document.getElementById(id);
@@ -1460,6 +1463,138 @@ window.submitPromoteDeputy = async function() {
     goBack();
     await showStationDeputies();
   } catch (e) {
+    tgAlert(e.message);
+  }
+};
+
+// ── Education ─────────────────────────────────────────────────────────────────
+
+window.showEducation = async function() {
+  showScreen('screen-education');
+  const list = document.getElementById('education-list');
+  list.innerHTML = `<div class="loading">${t('loading')}</div>`;
+
+  const isITStaff = ['it_worker', 'it_deputy', 'it_manager', 'admin'].includes(currentUser.role);
+  const fab = document.getElementById('fab-education-upload');
+  if (fab) fab.style.display = isITStaff ? 'flex' : 'none';
+
+  try {
+    const items = await api.getEducation();
+    if (!items.length) {
+      list.innerHTML = `<div class="empty">${t('msg_no_education')}</div>`;
+      return;
+    }
+    list.innerHTML = items.map(item => {
+      const icon = item.item_type === 'file' ? '📄' : '▶';
+      const deleteBtn = isITStaff
+        ? `<button class="btn btn-danger" style="width:auto;padding:4px 10px;font-size:12px;flex-shrink:0" onclick="deleteEducation(event,${item.id})">${t('btn_remove')}</button>`
+        : '';
+      return `
+        <div class="card" style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:8px" onclick="openEducationItem(${item.id})">
+          <div style="flex:1;min-width:0">
+            <div class="card-title">${icon} ${escHtml(item.title)}</div>
+            ${item.description ? `<div class="card-meta">${escHtml(item.description)}</div>` : ''}
+            <div class="card-meta" style="font-size:12px;color:var(--hint);margin-top:2px">${escHtml(item.company_name)} · ${escHtml(item.created_by_name)} · ${formatDate(item.created_at)}</div>
+          </div>
+          ${deleteBtn}
+        </div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = `<div class="empty">${t('error_general')}${e.message}</div>`;
+  }
+};
+
+window.openEducationItem = function(id) {
+  // Find item data cached in the DOM isn't ideal; re-fetch or store in a map.
+  // Simplest: just re-fetch and open link
+  api.getEducation().then(items => {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    const target = item.item_type === 'file' ? item.file_url : item.url;
+    if (target) window.open(target, '_blank');
+  }).catch(() => {});
+};
+
+window.deleteEducation = async function(event, id) {
+  event.stopPropagation();
+  const confirmed = await tgConfirm(t('confirm_delete_education'));
+  if (!confirmed) return;
+  try {
+    await api.deleteEducation(id);
+    await showEducation();
+  } catch (e) {
+    tgAlert(e.message);
+  }
+};
+
+window.showEducationUpload = async function() {
+  showScreen('screen-education-upload');
+  document.getElementById('education-title').value = '';
+  document.getElementById('education-description').value = '';
+  document.getElementById('education-type').value = 'file';
+  document.getElementById('education-file').value = '';
+  document.getElementById('education-url').value = '';
+  document.getElementById('education-file-preview').style.display = 'none';
+  document.getElementById('education-file-field').style.display = '';
+  document.getElementById('education-url-field').style.display = 'none';
+
+  const companyField = document.getElementById('education-company-field');
+  const select = document.getElementById('education-company-select');
+  const companies = currentUser.companies || [];
+  if (companies.length > 1) {
+    select.innerHTML = companies.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+    companyField.style.display = '';
+  } else {
+    companyField.style.display = 'none';
+  }
+};
+
+window.onEducationTypeChange = function() {
+  const type = document.getElementById('education-type').value;
+  document.getElementById('education-file-field').style.display = type === 'file' ? '' : 'none';
+  document.getElementById('education-url-field').style.display = type === 'video_link' ? '' : 'none';
+};
+
+window.onEducationFileChange = function(input) {
+  const preview = document.getElementById('education-file-preview');
+  const label = document.getElementById('education-file-label');
+  if (input.files.length) {
+    const f = input.files[0];
+    preview.textContent = `📄 ${f.name} (${(f.size / 1024).toFixed(1)} KB)`;
+    preview.style.display = '';
+    label.textContent = t('btn_change_file');
+  } else {
+    preview.style.display = 'none';
+    label.textContent = t('btn_attach_file');
+  }
+};
+
+window.submitEducationUpload = async function() {
+  const btn = document.getElementById('btn-submit-education');
+  if (btn.disabled) return;
+
+  const title = document.getElementById('education-title').value.trim();
+  const description = document.getElementById('education-description').value.trim();
+  const itemType = document.getElementById('education-type').value;
+  const fileInput = document.getElementById('education-file');
+  const url = document.getElementById('education-url').value.trim();
+
+  if (!title) { tgAlert(t('msg_enter_title')); return; }
+  if (itemType === 'file' && !fileInput.files[0]) { tgAlert(t('msg_select_file')); return; }
+  if (itemType === 'video_link' && !url) { tgAlert(t('msg_enter_url')); return; }
+
+  const companies = currentUser.companies || [];
+  const companyId = companies.length > 1
+    ? document.getElementById('education-company-select').value
+    : (companies[0]?.id || null);
+
+  btn.disabled = true;
+  try {
+    await api.createEducation(title, description, itemType, fileInput.files[0] || null, url, companyId);
+    goBack();
+    await showEducation();
+  } catch (e) {
+    btn.disabled = false;
     tgAlert(e.message);
   }
 };

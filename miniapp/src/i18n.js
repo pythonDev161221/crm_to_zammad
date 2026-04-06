@@ -190,6 +190,24 @@ const TRANSLATIONS = {
     content_share_invite: "Share this link with your workers. Anyone with this link can join your station.",
     content_promote_worker_info: "Select a worker from your station to promote to deputy.",
     content_invite_role_info: "One-time invite link:",
+
+    // Education
+    screen_education: "Education",
+    screen_education_upload: "Add Material",
+    btn_education: "📚",
+    btn_attach_file: "📄 Attach file",
+    btn_change_file: "📄 Change file",
+    label_education_type: "Type *",
+    label_education_file: "File *",
+    label_education_url: "Video URL *",
+    education_type_file: "File",
+    education_type_video_link: "Video Link",
+    placeholder_education_title: "e.g. Safety instructions",
+    placeholder_education_url: "https://youtube.com/...",
+    msg_no_education: "No education materials yet.",
+    msg_select_file: "Please select a file.",
+    msg_enter_url: "Please enter a URL.",
+    confirm_delete_education: "Delete this education material?",
   },
 
   ru: {
@@ -381,6 +399,24 @@ const TRANSLATIONS = {
     content_share_invite: "Поделитесь этой ссылкой с сотрудниками. Любой по этой ссылке может присоединиться к вашей станции.",
     content_promote_worker_info: "Выберите сотрудника вашей станции для назначения заместителем.",
     content_invite_role_info: "Одноразовая пригласительная ссылка:",
+
+    // Education
+    screen_education: "Обучение",
+    screen_education_upload: "Добавить материал",
+    btn_education: "📚",
+    btn_attach_file: "📄 Прикрепить файл",
+    btn_change_file: "📄 Изменить файл",
+    label_education_type: "Тип *",
+    label_education_file: "Файл *",
+    label_education_url: "Ссылка на видео *",
+    education_type_file: "Файл",
+    education_type_video_link: "Видео-ссылка",
+    placeholder_education_title: "Например: Инструкция по безопасности",
+    placeholder_education_url: "https://youtube.com/...",
+    msg_no_education: "Учебных материалов пока нет.",
+    msg_select_file: "Пожалуйста, выберите файл.",
+    msg_enter_url: "Пожалуйста, введите ссылку.",
+    confirm_delete_education: "Удалить этот учебный материал?",
   },
 
   ky: {
@@ -572,6 +608,24 @@ const TRANSLATIONS = {
     content_share_invite: "Бул шилтемени кызматкерлериңиз менен бөлүшүңүз. Ушул шилтеме аркылуу каалаган адам станцияңызга кошула алат.",
     content_promote_worker_info: "Орун басар кылып дайындоо үчүн станцияңыздагы кызматкерди тандаңыз.",
     content_invite_role_info: "Бир жолку чакыруу шилтемеси:",
+
+    // Education
+    screen_education: "Окутуу",
+    screen_education_upload: "Материал кошуу",
+    btn_education: "📚",
+    btn_attach_file: "📄 Файл тиркөө",
+    btn_change_file: "📄 Файлды өзгөртүү",
+    label_education_type: "Түрү *",
+    label_education_file: "Файл *",
+    label_education_url: "Видео шилтемеси *",
+    education_type_file: "Файл",
+    education_type_video_link: "Видео-шилтеме",
+    placeholder_education_title: "Мис: Коопсуздук нускамасы",
+    placeholder_education_url: "https://youtube.com/...",
+    msg_no_education: "Азырынча окуу материалдары жок.",
+    msg_select_file: "Файлды тандаңыз.",
+    msg_enter_url: "Шилтемени киргизиңиз.",
+    confirm_delete_education: "Бул окуу материалын жок кылуу?",
   },
 };
 

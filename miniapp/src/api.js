@@ -149,4 +149,18 @@ export const api = {
   // Password change
   changePassword: (old_password, new_password) =>
     request('POST', '/auth/change-password/', { old_password, new_password }),
+
+  // Education
+  getEducation: (companyId) => request('GET', companyId ? `/education/?company_id=${companyId}` : '/education/'),
+  createEducation: (title, description, itemType, file, url, companyId) => {
+    const form = new FormData();
+    form.append('title', title);
+    form.append('description', description);
+    form.append('item_type', itemType);
+    if (file) form.append('file', file);
+    if (url) form.append('url', url);
+    if (companyId) form.append('company_id', companyId);
+    return request('POST', '/education/', form);
+  },
+  deleteEducation: (id) => request('DELETE', `/education/${id}/`),
 };
