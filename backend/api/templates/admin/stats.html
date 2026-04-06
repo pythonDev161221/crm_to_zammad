@@ -1,0 +1,66 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+
+<h1>SLI Stats</h1>
+
+<form method="get" style="margin-bottom: 2em;">
+  <label for="date_from">From:</label>
+  <input type="date" id="date_from" name="date_from" value="{{ date_from }}">
+  &nbsp;
+  <label for="date_to">To:</label>
+  <input type="date" id="date_to" name="date_to" value="{{ date_to }}">
+  &nbsp;
+  <input type="submit" value="Apply" class="button">
+</form>
+
+<h2>Worker Performance</h2>
+{% if worker_stats %}
+<table style="border-collapse: collapse; width: 100%;">
+  <thead>
+    <tr style="background: #417690; color: white;">
+      <th style="padding: 8px 12px; text-align: left;">Worker</th>
+      <th style="padding: 8px 12px; text-align: right;">Tasks Completed</th>
+      <th style="padding: 8px 12px; text-align: right;">Avg Task Duration</th>
+      <th style="padding: 8px 12px; text-align: right;">Total Time Spent</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in worker_stats %}
+    <tr style="{% cycle 'background:#f8f8f8;' '' %}">
+      <td style="padding: 8px 12px;">{{ row.display_name }}</td>
+      <td style="padding: 8px 12px; text-align: right;">{{ row.tasks_done }}</td>
+      <td style="padding: 8px 12px; text-align: right;">{{ row.avg_duration_fmt }}</td>
+      <td style="padding: 8px 12px; text-align: right;">{{ row.total_duration_fmt }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No completed tasks in this period.</p>
+{% endif %}
+
+<h2 style="margin-top: 2em;">Ticket Resolution by Company</h2>
+{% if company_stats %}
+<table style="border-collapse: collapse; width: 100%;">
+  <thead>
+    <tr style="background: #417690; color: white;">
+      <th style="padding: 8px 12px; text-align: left;">Company</th>
+      <th style="padding: 8px 12px; text-align: right;">Tickets Resolved</th>
+      <th style="padding: 8px 12px; text-align: right;">Avg Resolution Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in company_stats %}
+    <tr style="{% cycle 'background:#f8f8f8;' '' %}">
+      <td style="padding: 8px 12px;">{{ row.company }}</td>
+      <td style="padding: 8px 12px; text-align: right;">{{ row.total }}</td>
+      <td style="padding: 8px 12px; text-align: right;">{{ row.avg_resolution_fmt }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No resolved tickets in this period.</p>
+{% endif %}
+
+{% endblock %}

@@ -16,12 +16,15 @@ Including another URLconf
 """
 from django.conf import settings
 from django.contrib import admin
+from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import path, include
 from django.views.generic import TemplateView
 from rest_framework_simplejwt.views import TokenRefreshView
 from api.telegram_auth import TelegramAuthView, LinkAccountView, RegisterView
+from api.admin_stats import StatsView
 
 urlpatterns = [
+    path('admin/stats/', staff_member_required(StatsView.as_view()), name='admin-stats'),
     path('admin/', admin.site.urls),
     path('api/auth/telegram/', TelegramAuthView.as_view(), name='telegram-auth'),
     path('api/auth/link/', LinkAccountView.as_view(), name='link-account'),
