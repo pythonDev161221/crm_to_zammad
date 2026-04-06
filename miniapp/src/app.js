@@ -1,4 +1,4 @@
-import { api, setToken } from '/static/api.js?v=18';
+import { api, setToken } from '/static/api.js?v=19';
 
 const tg = window.Telegram?.WebApp;
 const inTelegram = !!(tg?.initData);
@@ -98,7 +98,7 @@ async function init() {
       setToken(devToken);
       const me = await api.getMe();
       currentUser = { id: me.id, role: me.role, name: me.first_name || me.username };
-      if (me.role === 'it_manager') {
+      if (['it_worker', 'it_deputy', 'it_manager'].includes(me.role)) {
         currentUser.companies = await api.getMyCompanies().catch(() => []);
       }
       await loadTickets();
@@ -149,7 +149,7 @@ async function init() {
     }
     setToken(auth.access, auth.refresh);
     currentUser = auth.user;
-    if (currentUser.role === 'it_manager' || currentUser.role === 'it_deputy') {
+    if (['it_worker', 'it_deputy', 'it_manager'].includes(currentUser.role)) {
       currentUser.companies = await api.getMyCompanies().catch(() => []);
     }
     await loadTickets();
@@ -200,7 +200,7 @@ window.submitLinkAccount = async function() {
     const auth = await api.linkAccount(initData, username, password);
     setToken(auth.access, auth.refresh);
     currentUser = auth.user;
-    if (currentUser.role === 'it_manager' || currentUser.role === 'it_deputy') {
+    if (['it_worker', 'it_deputy', 'it_manager'].includes(currentUser.role)) {
       currentUser.companies = await api.getMyCompanies().catch(() => []);
     }
     promptPhoneIfMissing();
@@ -1484,20 +1484,33 @@ window.showEducation = async function() {
       list.innerHTML = `<div class="empty">${t('msg_no_education')}</div>`;
       return;
     }
-    list.innerHTML = items.map(item => {
-      const icon = item.item_type === 'file' ? '📄' : '▶';
-      const deleteBtn = isITStaff
-        ? `<button class="btn btn-danger" style="width:auto;padding:4px 10px;font-size:12px;flex-shrink:0" onclick="deleteEducation(event,${item.id})">${t('btn_remove')}</button>`
-        : '';
+    // Group by company
+    const groups = {};
+    items.forEach(item => {
+      const cn = item.company_name || '—';
+      if (!groups[cn]) groups[cn] = [];
+      groups[cn].push(item);
+    });
+
+    list.innerHTML = Object.entries(groups).map(([companyName, groupItems]) => {
+      const cards = groupItems.map(item => {
+        const icon = item.item_type === 'file' ? '📄' : '▶';
+        const deleteBtn = isITStaff
+          ? `<button class="btn btn-danger" style="width:auto;padding:4px 10px;font-size:12px;flex-shrink:0" onclick="deleteEducation(event,${item.id})">${t('btn_remove')}</button>`
+          : '';
+        return `
+          <div class="card" style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:8px" onclick="openEducationItem(${item.id})">
+            <div style="flex:1;min-width:0">
+              <div class="card-title">${icon} ${escHtml(item.title)}</div>
+              ${item.description ? `<div class="card-meta">${escHtml(item.description)}</div>` : ''}
+              <div class="card-meta" style="font-size:12px;color:var(--hint);margin-top:2px">${escHtml(item.created_by_name)} · ${formatDate(item.created_at)}</div>
+            </div>
+            ${deleteBtn}
+          </div>`;
+      }).join('');
       return `
-        <div class="card" style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:8px" onclick="openEducationItem(${item.id})">
-          <div style="flex:1;min-width:0">
-            <div class="card-title">${icon} ${escHtml(item.title)}</div>
-            ${item.description ? `<div class="card-meta">${escHtml(item.description)}</div>` : ''}
-            <div class="card-meta" style="font-size:12px;color:var(--hint);margin-top:2px">${escHtml(item.company_name)} · ${escHtml(item.created_by_name)} · ${formatDate(item.created_at)}</div>
-          </div>
-          ${deleteBtn}
-        </div>`;
+        <div style="padding:8px 16px 4px;font-size:13px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:0.5px">${escHtml(companyName)}</div>
+        ${cards}`;
     }).join('');
   } catch (e) {
     list.innerHTML = `<div class="empty">${t('error_general')}${e.message}</div>`;

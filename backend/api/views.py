@@ -351,7 +351,7 @@ class StationWorkerDeleteView(APIView):
 
 
 class MyCompaniesView(APIView):
-    permission_classes = [IsAuthenticated, IsITManagerOrDeputy]
+    permission_classes = [IsAuthenticated, IsITWorker]
 
     def get(self, request):
         companies = request.user.companies.all()
