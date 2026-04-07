@@ -74,15 +74,24 @@ class ZammadClient:
         for u in results:
             if u.get('login') == user.username:
                 return u['id']
-        result = self.post('/users', {
-            'firstname': user.first_name or user.username,
-            'lastname': user.last_name or '',
-            'login': user.username,
-            'email': user.email or f'{user.username}@internal.local',
-            'roles': ['Agent'],
-            'active': True,
-        })
-        return result['id']
+        try:
+            result = self.post('/users', {
+                'firstname': user.first_name or user.username,
+                'lastname': user.last_name or '',
+                'login': user.username,
+                'email': user.email or f'{user.username}@internal.local',
+                'roles': ['Agent'],
+                'active': True,
+            })
+            return result['id']
+        except Exception as e:
+            if '422' in str(e):
+                all_users = self.get('/users')
+                for u in all_users:
+                    if u.get('login', '').lower() == user.username.lower():
+                        self.put(f'/users/{u["id"]}', {'roles': ['Agent']})
+                        return u['id']
+            raise
 
     def set_agent_groups(self, agent_id, group_ids):
         """Replace agent's group membership with the given list of group IDs."""
@@ -167,7 +176,7 @@ def push_to_zammad(ticket):
     if ticket.resolved_by:
         agent_id = client.get_or_create_agent(ticket.resolved_by)
         client.set_agent_groups(agent_id, [group_id])
-        owner_login = ticket.resolved_by.username
+        owner_login = ticket.resolved_by.username.lower()
 
     worker = ticket.created_by
     worker_name = worker.get_full_name() or worker.username
