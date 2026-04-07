@@ -13,6 +13,7 @@ from tasks.models import Ticket, Task, TicketPhoto, CommentPhoto, EducationItem
 from users.models import User, Station, StationInvite, RoleInvite
 from zammad_bridge.agent_sync import sync_agent_created
 from zammad_bridge.client import push_to_zammad
+from .notifications import notify_task_assigned, notify_task_cancelled
 from .permissions import (
     IsITWorker, IsITOrSupplyWorker, IsITManager, IsITManagerOrDeputy,
     IsStationManager, IsStationManagerOrDeputy, IsWorker, IsWorkerOrStationManager,
@@ -183,7 +184,8 @@ class TaskCreateView(generics.CreateAPIView):
         ticket_company = ticket.created_by.station.company if ticket.created_by.station else None
         if ticket_company and not assigned_to.companies.filter(pk=ticket_company.pk).exists():
             raise DRFPermissionDenied('This IT worker is not assigned to this company.')
-        serializer.save(ticket=ticket, created_by=self.request.user)
+        task = serializer.save(ticket=ticket, created_by=self.request.user)
+        notify_task_assigned(task)
 
 
 class TaskUpdateView(generics.UpdateAPIView):
@@ -221,6 +223,7 @@ class TaskCancelView(generics.DestroyAPIView):
             return Response({'detail': 'Task is already cancelled.'}, status=status.HTTP_400_BAD_REQUEST)
         task.status = Task.Status.CANCELLED
         task.save(update_fields=['status'])
+        notify_task_cancelled(task)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

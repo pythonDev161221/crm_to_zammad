@@ -511,6 +511,8 @@ window.cancelTask = async function(taskId) {
 };
 
 window.assignSelf = async function(ticketId) {
+  const btn = document.querySelector(`button[onclick="assignSelf(${ticketId})"]`);
+  if (btn) btn.disabled = true;
   try {
     await api.createTask(ticketId, {
       assigned_to: currentUser.id,
@@ -518,6 +520,7 @@ window.assignSelf = async function(ticketId) {
     });
     await openTicket(ticketId);
   } catch (e) {
+    if (btn) btn.disabled = false;
     tgAlert(e.message);
   }
 };
@@ -651,6 +654,8 @@ window.submitDelegate = async function() {
     return;
   }
 
+  const btn = document.querySelector('button[onclick="submitDelegate()"]');
+  if (btn) btn.disabled = true;
   try {
     await api.createTask(ticketId, {
       assigned_to: selectedDelegateWorkerId,
@@ -660,6 +665,7 @@ window.submitDelegate = async function() {
     await openTicket(ticketId);
     showScreen('screen-ticket-detail');
   } catch (e) {
+    if (btn) btn.disabled = false;
     tgAlert(e.message);
   }
 };
