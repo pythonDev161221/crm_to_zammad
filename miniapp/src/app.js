@@ -249,7 +249,7 @@ function renderTicketList(tickets) {
 
   const btnEducation = document.getElementById('btn-education');
   if (btnEducation) btnEducation.style.display = role !== 'supply_worker' ? 'inline' : 'none';
-  const itOnlyCards = ['manage-card-it-worker', 'manage-card-supply-worker'];
+  const itOnlyCards = ['manage-card-it-worker', 'manage-card-it-deputy', 'manage-card-supply-worker'];
   itOnlyCards.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = role === 'it_manager' ? '' : 'none';
