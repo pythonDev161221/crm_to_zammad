@@ -702,6 +702,8 @@ class RoleInviteView(APIView):
                 station = Station.objects.get(pk=station_id, company=company)
             except Station.DoesNotExist:
                 raise ValidationError({'station_id': 'Station not found in your company.'})
+            if station.manager is not None:
+                raise ValidationError({'station_id': 'This station already has a manager. Remove the existing manager first.'})
         invite = RoleInvite.create(role=role, company=company, created_by=request.user, station=station)
         return Response(
             {'token': invite.token, 'link': _build_invite_link(invite.token)},
