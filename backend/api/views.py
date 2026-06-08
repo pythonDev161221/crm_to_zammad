@@ -671,7 +671,7 @@ class StationSetManagerView(APIView):
 
 
 class RoleInviteView(APIView):
-    permission_classes = [IsAuthenticated, IsITManager]
+    permission_classes = [IsAuthenticated, IsITManagerOrDeputy]
 
     def get(self, request):
         companies = request.user.companies.all()
@@ -690,6 +690,8 @@ class RoleInviteView(APIView):
         role = request.data.get('role', '').strip()
         if role not in (RoleInvite.Role.IT_WORKER, RoleInvite.Role.SUPPLY_WORKER, RoleInvite.Role.STATION_MANAGER):
             raise ValidationError({'role': 'Invalid role.'})
+        if request.user.role == User.Role.IT_DEPUTY and role != RoleInvite.Role.STATION_MANAGER:
+            raise ValidationError({'role': 'IT Deputies can only invite station managers.'})
         company = _resolve_manage_company(request.user, request.data.get('company_id'))
         station = None
         if role == RoleInvite.Role.STATION_MANAGER:
