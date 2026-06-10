@@ -214,9 +214,11 @@ class TaskCancelView(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated, IsITOrSupplyWorker]
 
     def get_queryset(self):
-        return Task.objects.filter(
-            Q(created_by=self.request.user) | Q(assigned_to=self.request.user)
-        )
+        user = self.request.user
+        qs = Q(created_by=user) | Q(assigned_to=user)
+        if user.role in (User.Role.IT_MANAGER, User.Role.ADMIN):
+            qs = qs | Q(ticket__station__company__in=user.companies.all())
+        return Task.objects.filter(qs).distinct()
 
     def destroy(self, request, *args, **kwargs):
         task = self.get_object()

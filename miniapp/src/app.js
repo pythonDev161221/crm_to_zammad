@@ -385,7 +385,7 @@ function renderTicketDetail(ticket) {
               </div>
               ${tk.notes ? `<div class="ticket-notes">${escHtml(tk.notes)}</div>` : ''}
               ${tk.assigned_to === currentUser.id ? renderTaskActions(tk) : ''}
-              ${tk.created_by === currentUser.id && tk.assigned_to !== currentUser.id && tk.status !== 'done' && tk.status !== 'cancelled' ? `
+              ${(role === 'it_manager' || role === 'admin') && tk.assigned_to !== currentUser.id && tk.status !== 'done' && tk.status !== 'cancelled' ? `
                 <button class="btn btn-secondary" style="margin-top:8px;color:var(--destructive,#e53935)" onclick="cancelTask(${tk.id})">${t('btn_cancel_task')}</button>
               ` : ''}
             </div>
