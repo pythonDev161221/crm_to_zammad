@@ -126,22 +126,22 @@
   </div>
 
   <!-- Delegate Task -->
-  <div id="screen-delegate" class="screen">
+  <div id="screen-assign" class="screen">
     <div class="header">
       <button class="back-btn" onclick="goBack()" data-i18n="btn_back">← Back</button>
-      <h1 data-i18n="screen_delegate">Delegate</h1>
+      <h1 data-i18n="screen_assign">Assign</h1>
     </div>
     <div class="form">
-      <input type="hidden" id="delegate-ticket-id">
+      <input type="hidden" id="assign-ticket-id">
       <div class="field">
         <label data-i18n="label_select_it_worker">Select IT Worker</label>
-        <div id="delegate-worker-list" class="card-list" style="padding:0"></div>
+        <div id="assign-worker-list" class="card-list" style="padding:0"></div>
       </div>
       <div class="field">
         <label data-i18n="label_notes">Notes for them</label>
-        <textarea id="delegate-notes" placeholder="What should they do?" data-i18n-placeholder="placeholder_notes"></textarea>
+        <textarea id="assign-notes" placeholder="What should they do?" data-i18n-placeholder="placeholder_notes"></textarea>
       </div>
-      <button class="btn btn-primary" onclick="submitDelegate()" data-i18n="btn_send">Send</button>
+      <button class="btn btn-primary" onclick="submitAssign()" data-i18n="btn_send">Send</button>
     </div>
   </div>
 

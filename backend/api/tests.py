@@ -654,7 +654,8 @@ class DeputyTests(BaseSetup):
         res = self.client.delete(f'/api/station/deputies/{self.deputy.id}/')
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.deputy.refresh_from_db()
-        self.assertFalse(self.deputy.is_active)
+        self.assertEqual(self.deputy.role, User.Role.WORKER)
+        self.assertTrue(self.deputy.is_active)
 
 
 # ── IT Manager ────────────────────────────────────────────────────────────────

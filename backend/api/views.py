@@ -181,6 +181,9 @@ class TaskCreateView(generics.CreateAPIView):
     def perform_create(self, serializer):
         ticket = generics.get_object_or_404(Ticket, pk=self.kwargs['ticket_pk'])
         assigned_to = serializer.validated_data.get('assigned_to')
+        if self.request.user.role not in (User.Role.IT_MANAGER, User.Role.ADMIN):
+            if assigned_to != self.request.user:
+                raise DRFPermissionDenied('You can only create a task for yourself.')
         ticket_company = ticket.created_by.station.company if ticket.created_by.station else None
         if ticket_company and not assigned_to.companies.filter(pk=ticket_company.pk).exists():
             raise DRFPermissionDenied('This IT worker is not assigned to this company.')

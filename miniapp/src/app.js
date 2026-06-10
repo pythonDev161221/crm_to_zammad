@@ -442,8 +442,8 @@ function renderTicketDetail(ticket) {
         ${!ticket.tasks?.find(tk => tk.status !== 'cancelled') ? `
           <button class="btn btn-primary" onclick="assignSelf(${ticket.id})">${t('btn_take_ticket')}</button>
         ` : ''}
-        ${myTask && myTask.status !== 'done' ? `
-          <button class="btn btn-secondary" onclick="showDelegateForm(${ticket.id})">${t('btn_delegate_ticket')}</button>
+        ${(role === 'it_manager' || role === 'admin') ? `
+          <button class="btn btn-secondary" onclick="showAssignForm(${ticket.id})">${t('btn_assign_ticket')}</button>
         ` : ''}
         ${canResolve(ticket) ? `
           <button class="btn btn-danger" onclick="resolveTicket(${ticket.id})">${t('btn_mark_resolved')}</button>
@@ -609,15 +609,15 @@ window.submitComment = async function(ticketId) {
   }
 };
 
-let selectedDelegateWorkerId = null;
+let selectedAssignWorkerId = null;
 
-window.showDelegateForm = async function(ticketId) {
-  showScreen('screen-delegate');
-  document.getElementById('delegate-ticket-id').value = ticketId;
-  document.getElementById('delegate-notes').value = '';
-  selectedDelegateWorkerId = null;
+window.showAssignForm = async function(ticketId) {
+  showScreen('screen-assign');
+  document.getElementById('assign-ticket-id').value = ticketId;
+  document.getElementById('assign-notes').value = '';
+  selectedAssignWorkerId = null;
 
-  const list = document.getElementById('delegate-worker-list');
+  const list = document.getElementById('assign-worker-list');
   list.innerHTML = `<div class="empty">${t('loading')}</div>`;
 
   try {
@@ -627,7 +627,7 @@ window.showDelegateForm = async function(ticketId) {
       return;
     }
     list.innerHTML = workers.map(w => `
-      <div class="card" id="delegate-worker-${w.id}" onclick="selectWorker(${w.id}, '${escHtml(w.name)}')">
+      <div class="card" id="assign-worker-${w.id}" onclick="selectAssignWorker(${w.id})">
         <div class="card-title">🔧 ${escHtml(w.name)}</div>
       </div>
     `).join('');
@@ -636,29 +636,29 @@ window.showDelegateForm = async function(ticketId) {
   }
 };
 
-window.selectWorker = function(id, name) {
-  selectedDelegateWorkerId = id;
-  document.querySelectorAll('#delegate-worker-list .card').forEach(c => {
+window.selectAssignWorker = function(id) {
+  selectedAssignWorkerId = id;
+  document.querySelectorAll('#assign-worker-list .card').forEach(c => {
     c.style.border = '2px solid transparent';
   });
-  const card = document.getElementById(`delegate-worker-${id}`);
+  const card = document.getElementById(`assign-worker-${id}`);
   if (card) card.style.border = '2px solid var(--button)';
 };
 
-window.submitDelegate = async function() {
-  const ticketId = document.getElementById('delegate-ticket-id').value;
-  const notes = document.getElementById('delegate-notes').value.trim();
+window.submitAssign = async function() {
+  const ticketId = document.getElementById('assign-ticket-id').value;
+  const notes = document.getElementById('assign-notes').value.trim();
 
-  if (!selectedDelegateWorkerId) {
+  if (!selectedAssignWorkerId) {
     tgAlert(t('msg_select_worker'));
     return;
   }
 
-  const btn = document.querySelector('button[onclick="submitDelegate()"]');
+  const btn = document.querySelector('button[onclick="submitAssign()"]');
   if (btn) btn.disabled = true;
   try {
     await api.createTask(ticketId, {
-      assigned_to: selectedDelegateWorkerId,
+      assigned_to: selectedAssignWorkerId,
       status: 'open',
       notes,
     });
