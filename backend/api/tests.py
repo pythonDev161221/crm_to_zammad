@@ -263,7 +263,27 @@ class TaskTests(BaseSetup):
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Task.objects.filter(ticket=ticket, assigned_to=self.it1).exists())
 
-    def test_it_worker_cannot_delegate_to_wrong_company(self):
+    def test_it_worker_cannot_assign_to_another_worker(self):
+        ticket = self.make_ticket()
+        auth(self.client, self.it1)
+        res = self.client.post(f'/api/tickets/{ticket.id}/tasks/', {
+            'assigned_to': self.it2.id,
+            'status': 'open',
+        })
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_it_manager_can_assign_to_worker(self):
+        it_manager = make_user('itman_task', User.Role.IT_MANAGER, companies=[self.company])
+        ticket = self.make_ticket()
+        auth(self.client, it_manager)
+        res = self.client.post(f'/api/tickets/{ticket.id}/tasks/', {
+            'assigned_to': self.it1.id,
+            'status': 'open',
+        })
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Task.objects.filter(ticket=ticket, assigned_to=self.it1).exists())
+
+    def test_it_worker_cannot_assign_to_wrong_company(self):
         company2 = Company.objects.create(name='BP')
         it_other = make_user('it_bp', User.Role.IT_WORKER, companies=[company2])
         ticket = self.make_ticket()
