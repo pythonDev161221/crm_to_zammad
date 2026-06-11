@@ -184,7 +184,7 @@ class TaskCreateView(generics.CreateAPIView):
         if self.request.user.role not in (User.Role.IT_MANAGER, User.Role.ADMIN):
             if assigned_to != self.request.user:
                 raise DRFPermissionDenied('You can only create a task for yourself.')
-        ticket_company = ticket.created_by.station.company if ticket.created_by.station else None
+        ticket_company = ticket.station.company if ticket.station else None
         if ticket_company and not assigned_to.companies.filter(pk=ticket_company.pk).exists():
             raise DRFPermissionDenied('This IT worker is not assigned to this company.')
         task = serializer.save(ticket=ticket, created_by=self.request.user)
@@ -247,8 +247,8 @@ class CommentCreateView(generics.CreateAPIView):
         if user.role == User.Role.STATION_MANAGER:
             if ticket.status == Ticket.Status.RESOLVED:
                 raise DRFPermissionDenied('Cannot comment on resolved tickets.')
-            if not ticket.created_by.station_id or \
-               ticket.created_by.station_id not in user.managed_stations.values_list('id', flat=True):
+            if not ticket.station_id or \
+               ticket.station_id not in user.managed_stations.values_list('id', flat=True):
                 raise DRFPermissionDenied('You can only comment on tickets from your station.')
             if is_internal:
                 raise DRFPermissionDenied('Station managers cannot post internal comments.')
@@ -273,7 +273,7 @@ class ITWorkerListView(APIView):
         if ticket_id:
             try:
                 ticket = Ticket.objects.get(pk=ticket_id)
-                ticket_company = ticket.created_by.station.company if ticket.created_by.station else None
+                ticket_company = ticket.station.company if ticket.station else None
                 if ticket_company:
                     qs = qs.filter(companies=ticket_company)
                 else:
