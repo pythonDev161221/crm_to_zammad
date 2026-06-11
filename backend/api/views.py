@@ -241,8 +241,8 @@ class CommentCreateView(generics.CreateAPIView):
         user = self.request.user
         is_internal = serializer.validated_data.get('is_internal', False)
 
-        if user.role == User.Role.DEPUTY:
-            raise DRFPermissionDenied('Deputies cannot post comments.')
+        if user.role == User.Role.DEPUTY and ticket.created_by != user:
+            raise DRFPermissionDenied('Deputies cannot post comments on tickets they did not create.')
 
         if user.role == User.Role.STATION_MANAGER:
             if ticket.status == Ticket.Status.RESOLVED:
