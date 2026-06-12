@@ -343,7 +343,7 @@ function renderTicketDetail(ticket) {
 
   const body = document.getElementById('ticket-detail-body');
   const role = currentUser.role;
-  const isITWorker = role === 'it_worker' || role === 'it_deputy' || role === 'it_manager' || role === 'admin';
+  const isITWorker = role === 'it_worker' || role === 'it_deputy' || role === 'it_manager' || role === 'dispatcher' || role === 'admin';
   const isSupplyWorker = role === 'supply_worker';
   const isManager = role === 'station_manager' || role === 'deputy';
   const canComment = role !== 'deputy' || ticket.created_by === currentUser.id;
@@ -439,13 +439,13 @@ function renderTicketDetail(ticket) {
     <!-- IT Worker actions -->
     ${isITWorker && ticket.status !== 'resolved' ? `
       <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px">
-        ${!ticket.tasks?.find(tk => tk.status !== 'cancelled') ? `
+        ${role !== 'dispatcher' && !ticket.tasks?.find(tk => tk.status !== 'cancelled') ? `
           <button class="btn btn-primary" onclick="assignSelf(${ticket.id})">${t('btn_take_ticket')}</button>
         ` : ''}
-        ${(role === 'it_manager' || role === 'admin') ? `
+        ${(role === 'it_manager' || role === 'dispatcher' || role === 'admin') ? `
           <button class="btn btn-secondary" onclick="showAssignForm(${ticket.id})">${t('btn_assign_ticket')}</button>
         ` : ''}
-        ${canResolve(ticket) ? `
+        ${canResolve(ticket) && role !== 'dispatcher' ? `
           <button class="btn btn-danger" onclick="resolveTicket(${ticket.id})">${t('btn_mark_resolved')}</button>
         ` : ''}
       </div>
