@@ -131,7 +131,11 @@ class TicketResolveView(APIView):
 
     def post(self, request, pk):
         try:
-            ticket = Ticket.objects.filter(tasks__assigned_to=request.user).distinct().get(pk=pk)
+            user = request.user
+            if user.role in (User.Role.IT_MANAGER, User.Role.ADMIN):
+                ticket = Ticket.objects.filter(station__company__in=user.companies.all()).distinct().get(pk=pk)
+            else:
+                ticket = Ticket.objects.filter(tasks__assigned_to=user).distinct().get(pk=pk)
         except Ticket.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
