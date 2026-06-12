@@ -20,6 +20,14 @@ class IsITOrSupplyWorker(BasePermission):
         )
 
 
+class IsITWorkerOrDispatcher(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.role in (
+            User.Role.IT_WORKER, User.Role.IT_DEPUTY,
+            User.Role.IT_MANAGER, User.Role.DISPATCHER, User.Role.ADMIN,
+        )
+
+
 class IsITManager(BasePermission):
     def has_permission(self, request, view):
         return request.user.role in (User.Role.IT_MANAGER, User.Role.ADMIN)

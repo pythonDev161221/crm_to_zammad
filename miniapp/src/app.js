@@ -760,7 +760,7 @@ function formatRole(role) {
   return {
     worker: t('role_worker'), station_manager: t('role_station_manager'), deputy: t('role_deputy'),
     it_worker: t('role_it_worker'), it_manager: t('role_it_manager'), it_deputy: t('role_it_deputy'),
-    supply_worker: t('role_supply_worker'), admin: t('role_admin'),
+    supply_worker: t('role_supply_worker'), dispatcher: t('role_dispatcher'), admin: t('role_admin'),
   }[role] || role;
 }
 

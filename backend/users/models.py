@@ -13,6 +13,7 @@ class User(AbstractUser):
         IT_DEPUTY = 'it_deputy', 'IT Deputy'
         IT_WORKER = 'it_worker', 'IT Worker'
         SUPPLY_WORKER = 'supply_worker', 'Supply Worker'
+        DISPATCHER = 'dispatcher', 'Dispatcher'
         WORKER = 'worker', 'Worker'
 
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.WORKER)
@@ -82,6 +83,7 @@ class RoleInvite(models.Model):
         IT_MANAGER = 'it_manager', 'IT Manager'
         IT_WORKER = 'it_worker', 'IT Worker'
         SUPPLY_WORKER = 'supply_worker', 'Supply Worker'
+        DISPATCHER = 'dispatcher', 'Dispatcher'
         STATION_MANAGER = 'station_manager', 'Station Manager'
 
     token = models.CharField(max_length=64, unique=True)

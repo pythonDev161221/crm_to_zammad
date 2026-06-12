@@ -111,6 +111,7 @@ const TRANSLATIONS = {
     role_it_manager: "IT Manager",
     role_it_deputy: "IT Deputy",
     role_supply_worker: "Supply Worker",
+    role_dispatcher: "Dispatcher",
     role_admin: "Administrator",
 
     // Sections
@@ -320,6 +321,7 @@ const TRANSLATIONS = {
     role_it_manager: "IT-менеджер",
     role_it_deputy: "IT-заместитель",
     role_supply_worker: "Специалист по снабжению",
+    role_dispatcher: "Диспетчер",
     role_admin: "Администратор",
 
     // Sections
@@ -529,6 +531,7 @@ const TRANSLATIONS = {
     role_it_manager: "IT-менеджер",
     role_it_deputy: "IT-орун басар",
     role_supply_worker: "Жабдуу адиси",
+    role_dispatcher: "Диспетчер",
     role_admin: "Администратор",
 
     // Sections

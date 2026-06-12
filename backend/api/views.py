@@ -15,7 +15,8 @@ from zammad_bridge.agent_sync import sync_agent_created
 from zammad_bridge.client import push_to_zammad
 from .notifications import notify_task_assigned, notify_task_cancelled
 from .permissions import (
-    IsITWorker, IsITOrSupplyWorker, IsITManager, IsITManagerOrDeputy,
+    IsITWorker, IsITOrSupplyWorker, IsITWorkerOrDispatcher,
+    IsITManager, IsITManagerOrDeputy,
     IsStationManager, IsStationManagerOrDeputy, IsWorker, IsWorkerOrStationManager,
 )
 from .serializers import (
@@ -48,6 +49,8 @@ def _get_tickets_for_user(user, qs):
         return qs.filter(station_id__in=station_ids)
     if user.role == User.Role.SUPPLY_WORKER:
         return qs.filter(tasks__assigned_to=user).exclude(tasks__status=Task.Status.CANCELLED).distinct()
+    if user.role == User.Role.DISPATCHER:
+        return qs.filter(station__company__in=user.companies.all())
     if user.role in (User.Role.IT_WORKER, User.Role.IT_MANAGER, User.Role.IT_DEPUTY):
         my_tasks = Task.objects.filter(ticket=OuterRef('pk'), assigned_to=user).exclude(status=Task.Status.CANCELLED)
         return qs.filter(
@@ -175,13 +178,16 @@ class TicketRateView(APIView):
 
 
 class TaskCreateView(generics.CreateAPIView):
-    permission_classes = [IsAuthenticated, IsITWorker]
+    permission_classes = [IsAuthenticated, IsITWorkerOrDispatcher]
     serializer_class = TaskSerializer
 
     def perform_create(self, serializer):
         ticket = generics.get_object_or_404(Ticket, pk=self.kwargs['ticket_pk'])
         assigned_to = serializer.validated_data.get('assigned_to')
-        if self.request.user.role not in (User.Role.IT_MANAGER, User.Role.ADMIN):
+        if self.request.user.role == User.Role.DISPATCHER:
+            if assigned_to == self.request.user:
+                raise DRFPermissionDenied('Dispatcher cannot assign tasks to themselves.')
+        elif self.request.user.role not in (User.Role.IT_MANAGER, User.Role.ADMIN):
             if assigned_to != self.request.user:
                 raise DRFPermissionDenied('You can only create a task for yourself.')
         ticket_company = ticket.station.company if ticket.station else None
@@ -263,7 +269,7 @@ class CommentCreateView(generics.CreateAPIView):
 
 
 class ITWorkerListView(APIView):
-    permission_classes = [IsAuthenticated, IsITWorker]
+    permission_classes = [IsAuthenticated, IsITWorkerOrDispatcher]
 
     def get(self, request):
         ticket_id = request.query_params.get('ticket_id')  # filter by ticket's company
@@ -693,7 +699,7 @@ class RoleInviteView(APIView):
 
     def post(self, request):
         role = request.data.get('role', '').strip()
-        if role not in (RoleInvite.Role.IT_WORKER, RoleInvite.Role.SUPPLY_WORKER, RoleInvite.Role.STATION_MANAGER):
+        if role not in (RoleInvite.Role.IT_WORKER, RoleInvite.Role.SUPPLY_WORKER, RoleInvite.Role.STATION_MANAGER, RoleInvite.Role.DISPATCHER):
             raise ValidationError({'role': 'Invalid role.'})
         if request.user.role == User.Role.IT_DEPUTY and role != RoleInvite.Role.STATION_MANAGER:
             raise ValidationError({'role': 'IT Deputies can only invite station managers.'})
@@ -889,7 +895,7 @@ def _education_company_ids(user):
     from users.models import Company
     if user.role == User.Role.ADMIN:
         return list(Company.objects.values_list('id', flat=True))
-    if user.role in (User.Role.IT_WORKER, User.Role.IT_DEPUTY, User.Role.IT_MANAGER):
+    if user.role in (User.Role.IT_WORKER, User.Role.IT_DEPUTY, User.Role.IT_MANAGER, User.Role.DISPATCHER):
         return list(user.companies.values_list('id', flat=True))
     if user.role in (User.Role.STATION_MANAGER, User.Role.DEPUTY):
         return list(
