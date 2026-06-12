@@ -274,7 +274,7 @@ class ITWorkerListView(APIView):
     def get(self, request):
         ticket_id = request.query_params.get('ticket_id')  # filter by ticket's company
         qs = User.objects.filter(
-            role__in=[User.Role.IT_WORKER, User.Role.IT_DEPUTY, User.Role.IT_MANAGER, User.Role.SUPPLY_WORKER]
+            role__in=[User.Role.IT_WORKER, User.Role.IT_DEPUTY, User.Role.SUPPLY_WORKER]
         ).exclude(pk=request.user.pk)
         if ticket_id:
             try:
