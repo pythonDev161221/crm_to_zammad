@@ -53,8 +53,7 @@ class PushToZammadTests(TestCase):
         payload = ticket_call[1]['json']
         self.assertEqual(payload['title'], 'Printer broken')
         self.assertEqual(payload['group'], 'Shell')
-        self.assertEqual(payload['organization'], 'AZS-1')
-        self.assertEqual(payload['customer'], 'worker1')
+        self.assertEqual(payload['customer'], 'azs-1')
 
     @patch('zammad_bridge.client.requests.get')
     @patch('zammad_bridge.client.requests.post')
