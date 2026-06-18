@@ -641,12 +641,20 @@ const TRANSLATIONS = {
   },
 };
 
+function detectTelegramLang() {
+  const code = window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code || '';
+  if (code === 'ru') return 'ru';
+  if (code === 'ky' || code === 'kg') return 'ky';
+  return 'en';
+}
+
 function getCurrentLang() {
-  return localStorage.getItem('lang') || 'en';
+  // lang_explicit is only set when user manually picks a language in profile
+  return localStorage.getItem('lang_explicit') || detectTelegramLang();
 }
 
 window.setLang = function(lang) {
-  localStorage.setItem('lang', lang);
+  localStorage.setItem('lang_explicit', lang);
   applyTranslations();
   // Re-render profile if currently on profile screen
   const active = document.querySelector('.screen.active');
@@ -682,15 +690,5 @@ function applyTranslations() {
 }
 
 window.initLang = function() {
-  if (!localStorage.getItem('lang')) {
-    const code = window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code || '';
-    if (code === 'ru') {
-      localStorage.setItem('lang', 'ru');
-    } else if (code === 'ky' || code === 'kg') {
-      localStorage.setItem('lang', 'ky');
-    } else {
-      localStorage.setItem('lang', 'en');
-    }
-  }
   applyTranslations();
 };
