@@ -4,6 +4,9 @@ const TRANSLATIONS = {
   en: {
     // Navigation / Screen Titles
     page_title: "Tech Support",
+    welcome_title: "Welcome",
+    register_via_invite: "Register via invite",
+    activate_with_credentials: "Activate with username / password",
     screen_my_tickets: "My Tickets",
     screen_new_request: "New Request",
     screen_assign: "Assign",
@@ -214,6 +217,9 @@ const TRANSLATIONS = {
   ru: {
     // Navigation / Screen Titles
     page_title: "Техподдержка",
+    welcome_title: "Добро пожаловать",
+    register_via_invite: "Зарегистрироваться по приглашению",
+    activate_with_credentials: "Войти с логином и паролем",
     screen_my_tickets: "Мои заявки",
     screen_new_request: "Новая заявка",
     screen_assign: "Назначить",
@@ -424,6 +430,9 @@ const TRANSLATIONS = {
   ky: {
     // Navigation / Screen Titles
     page_title: "Техникалык колдоо",
+    welcome_title: "Кош келиңиз",
+    register_via_invite: "Чакыруу аркылуу катталуу",
+    activate_with_credentials: "Логин жана сырсөз менен кируу",
     screen_my_tickets: "Менин өтүнүчтөрүм",
     screen_new_request: "Жаңы өтүнүч",
     screen_assign: "Дайындоо",

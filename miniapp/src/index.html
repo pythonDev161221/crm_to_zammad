@@ -19,7 +19,7 @@
   <!-- Activation / Registration -->
   <div id="screen-link-account" class="screen">
     <div class="header">
-      <h1>Welcome</h1>
+      <h1 data-i18n="welcome_title">Welcome</h1>
     </div>
     <div class="form">
       <div id="link-account-inactive-notice" style="display:none;background:var(--secondary-bg);border-radius:8px;padding:12px;margin-bottom:16px;font-size:14px;color:var(--hint)" data-i18n="msg_deactivated_account">
@@ -29,7 +29,7 @@
       <!-- Accordion: Register via invite -->
       <div class="card" style="margin-bottom:8px">
         <div onclick="toggleAccordion('accordion-invite')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-          <div class="card-title">Register via invite</div>
+          <div class="card-title" data-i18n="register_via_invite">Register via invite</div>
           <span id="accordion-invite-arrow" style="color:var(--hint);font-size:18px">&#8250;</span>
         </div>
         <div id="accordion-invite" style="display:none;margin-top:12px">
@@ -52,7 +52,7 @@
       <!-- Accordion: Activate with username/password -->
       <div class="card">
         <div onclick="toggleAccordion('accordion-activate')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-          <div class="card-title">Activate with username / password</div>
+          <div class="card-title" data-i18n="activate_with_credentials">Activate with username / password</div>
           <span id="accordion-activate-arrow" style="color:var(--hint);font-size:18px">&#8250;</span>
         </div>
         <div id="accordion-activate" style="display:none;margin-top:12px">
