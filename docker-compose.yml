@@ -35,7 +35,7 @@ services:
       - db
     restart: unless-stopped
     command: >
-      sh -c "echo '0 3 * * * python /app/manage.py auto_rate_tickets >> /proc/1/fd/1 2>&1' | crontab - && crond -f"
+      sh -c "{ echo '0 2 * * * python /app/manage.py backup_to_telegram >> /proc/1/fd/1 2>&1'; echo '0 3 * * * python /app/manage.py auto_rate_tickets >> /proc/1/fd/1 2>&1'; } | crontab - && crond -f"
 
   nginx:
     image: nginx:alpine
