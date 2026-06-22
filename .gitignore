@@ -7,3 +7,4 @@ db.sqlite3
 .venv
 Pipfile.lock
 *.log
+docs/*.docx
