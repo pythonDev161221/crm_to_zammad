@@ -63,6 +63,7 @@ class Command(BaseCommand):
         ticket_headers = [
             'ID', 'Title', 'Description', 'Station', 'Company',
             'Status', 'Created By', 'Created At', 'Resolved By', 'Resolved At', 'Rating',
+            'IT Workers', 'Date Taken', 'Date Started', 'Date Finished',
         ]
         ws_tickets.append(ticket_headers)
         for cell in ws_tickets[1]:
@@ -71,9 +72,13 @@ class Command(BaseCommand):
         tickets = Ticket.objects.filter(
             created_at__date__gte=period_start,
             created_at__date__lte=period_end,
-        ).select_related('created_by', 'resolved_by', 'station', 'station__company')
+        ).select_related('created_by', 'resolved_by', 'station', 'station__company').prefetch_related('task_set__assigned_to')
+
+        def fmt(dt):
+            return dt.strftime('%Y-%m-%d %H:%M') if dt else ''
 
         for t in tickets:
+            tasks = list(t.task_set.exclude(status=Task.Status.CANCELLED).order_by('created_at'))
             ws_tickets.append([
                 t.id,
                 t.title,
@@ -82,10 +87,14 @@ class Command(BaseCommand):
                 t.station.company.name if t.station and t.station.company else '',
                 t.status,
                 t.created_by.get_full_name() or t.created_by.username,
-                t.created_at.strftime('%Y-%m-%d %H:%M') if t.created_at else '',
+                fmt(t.created_at),
                 t.resolved_by.get_full_name() or t.resolved_by.username if t.resolved_by else '',
-                t.resolved_at.strftime('%Y-%m-%d %H:%M') if t.resolved_at else '',
+                fmt(t.resolved_at),
                 t.rating if t.rating is not None else '',
+                ', '.join(task.assigned_to.get_full_name() or task.assigned_to.username for task in tasks),
+                ', '.join(fmt(task.created_at) for task in tasks),
+                ', '.join(fmt(task.started_at) for task in tasks),
+                ', '.join(fmt(task.finished_at) for task in tasks),
             ])
 
         # --- Tasks sheet ---
