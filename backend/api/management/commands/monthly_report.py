@@ -72,13 +72,13 @@ class Command(BaseCommand):
         tickets = Ticket.objects.filter(
             created_at__date__gte=period_start,
             created_at__date__lte=period_end,
-        ).select_related('created_by', 'resolved_by', 'station', 'station__company').prefetch_related('task_set__assigned_to')
+        ).select_related('created_by', 'resolved_by', 'station', 'station__company').prefetch_related('tasks__assigned_to')
 
         def fmt(dt):
             return dt.strftime('%Y-%m-%d %H:%M') if dt else ''
 
         for t in tickets:
-            tasks = list(t.task_set.exclude(status=Task.Status.CANCELLED).order_by('created_at'))
+            tasks = list(t.tasks.exclude(status=Task.Status.CANCELLED).order_by('created_at'))
             ws_tickets.append([
                 t.id,
                 t.title,
