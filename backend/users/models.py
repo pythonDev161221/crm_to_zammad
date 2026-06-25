@@ -67,7 +67,7 @@ class StationInvite(models.Model):
 
     @classmethod
     def create_for_station(cls, station, created_by):
-        cls.objects.filter(station=station).delete()
+        cls.objects.filter(station=station, is_active=True).update(is_active=False)
         return cls.objects.create(
             token=secrets.token_urlsafe(32),
             station=station,

@@ -858,7 +858,7 @@ class StationInviteView(APIView):
         station = self._get_station(request.user, request.query_params.get('station_id'))
         if not station:
             return Response({'detail': 'No station assigned.'}, status=status.HTTP_403_FORBIDDEN)
-        StationInvite.objects.filter(station=station).delete()
+        StationInvite.objects.filter(station=station, is_active=True).update(is_active=False)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
