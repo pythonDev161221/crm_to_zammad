@@ -52,7 +52,7 @@ def notify_ticket_created(ticket) -> None:
     from users.models import User
     company = ticket.station.company
     recipients = User.objects.filter(
-        role__in=[User.Role.IT_MANAGER, User.Role.IT_DEPUTY, User.Role.IT_WORKER],
+        role__in=[User.Role.IT_MANAGER, User.Role.IT_DEPUTY, User.Role.IT_WORKER, User.Role.DISPATCHER],
         companies=company,
         is_active=True,
     ).exclude(telegram_id__isnull=True).exclude(telegram_id=0)
