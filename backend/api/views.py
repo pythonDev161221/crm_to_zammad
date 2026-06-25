@@ -13,7 +13,7 @@ from tasks.models import Ticket, Task, TicketPhoto, CommentPhoto, EducationItem
 from users.models import User, Station, StationInvite, RoleInvite
 from zammad_bridge.agent_sync import sync_agent_created
 from zammad_bridge.client import push_to_zammad
-from .notifications import notify_task_assigned, notify_task_cancelled
+from .notifications import notify_task_assigned, notify_task_cancelled, notify_ticket_created
 from .permissions import (
     IsITWorker, IsITOrSupplyWorker, IsITWorkerOrDispatcher,
     IsITManager, IsITManagerOrDeputy,
@@ -114,6 +114,7 @@ class TicketListCreateView(generics.ListCreateAPIView):
         ticket = serializer.save(created_by=user, station=station)
         for photo in self.request.FILES.getlist('photos'):
             TicketPhoto.objects.create(ticket=ticket, image=photo)
+        notify_ticket_created(ticket)
 
 
 class TicketDetailView(generics.RetrieveAPIView):

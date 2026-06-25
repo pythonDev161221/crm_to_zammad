@@ -46,3 +46,22 @@ def notify_task_cancelled(task) -> None:
         f'Cancelled by: {delegator.get_full_name() or delegator.username}'
     )
     _send(assignee.telegram_id, text)
+
+
+def notify_ticket_created(ticket) -> None:
+    from users.models import User
+    company = ticket.station.company
+    recipients = User.objects.filter(
+        role__in=[User.Role.IT_MANAGER, User.Role.IT_DEPUTY, User.Role.IT_WORKER],
+        companies=company,
+        is_active=True,
+    ).exclude(telegram_id__isnull=True).exclude(telegram_id=0)
+    reporter = ticket.created_by
+    station = ticket.station
+    text = (
+        f'New ticket #{ticket.id}: {ticket.title}\n'
+        f'Station: {station.name}\n'
+        f'Reporter: {reporter.get_full_name() or reporter.username}'
+    )
+    for user in recipients:
+        _send(user.telegram_id, text)
