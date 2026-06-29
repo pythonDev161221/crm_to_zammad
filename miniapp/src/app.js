@@ -1102,7 +1102,7 @@ const MANAGE_CONFIG = {
   it_worker:       { titleKey: 'manage_it_workers',       addTitleKey: 'screen_add_staff', apiGet: () => api.getManageITWorkers(currentCompanyId),       apiAdd: (d) => api.addManageITWorker(d),       apiRemove: (id) => api.removeManageITWorker(id) },
   it_deputy:       { titleKey: 'manage_it_deputies',      addTitleKey: null,               apiGet: () => api.getManageITDeputies(currentCompanyId),      apiAdd: null,                                  apiRemove: (id) => api.demoteITDeputy(id) },
   supply_worker:   { titleKey: 'manage_supply_workers',   addTitleKey: 'screen_add_staff', apiGet: () => api.getManageSupplyWorkers(currentCompanyId),   apiAdd: (d) => api.addManageSupplyWorker(d),   apiRemove: (id) => api.removeManageSupplyWorker(id) },
-  station_manager: { titleKey: 'manage_station_managers', addTitleKey: 'screen_add_staff', apiGet: () => api.getManageStationManagers(currentCompanyId), apiAdd: (d) => api.addManageStationManager(d), apiRemove: (id) => api.removeManageStationManager(id) },
+  station_manager: { titleKey: 'manage_station_managers', addTitleKey: null, apiGet: () => api.getManageStationManagers(currentCompanyId), apiAdd: null, apiRemove: (id) => api.removeManageStationManager(id) },
 };
 
 window.showCompanyOrManage = async function() {
