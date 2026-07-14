@@ -12,13 +12,19 @@ from django.core.management.base import BaseCommand
 class Command(BaseCommand):
     help = 'Backup PostgreSQL database and send to Telegram channel'
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--force', action='store_true',
+            help='Run even when DEBUG=True (for local testing)',
+        )
+
     def handle(self, *args, **options):
-        if settings.DEBUG:
-            self.stdout.write('Skipping backup — dev environment (DEBUG=True)')
+        if settings.DEBUG and not options['force']:
+            self.stdout.write('Skipping backup — dev environment (DEBUG=True), use --force to override')
             return
 
         chat_id = getattr(settings, 'BACKUP_TELEGRAM_CHAT_ID', '')
-        token = settings.TELEGRAM_BOT_TOKEN
+        token = getattr(settings, 'BACKUP_TELEGRAM_BOT_TOKEN', '') or settings.TELEGRAM_BOT_TOKEN
         if not chat_id or not token:
             self.stderr.write('BACKUP_TELEGRAM_CHAT_ID or TELEGRAM_BOT_TOKEN not set')
             return
