@@ -39,9 +39,9 @@ services:
       sh -c "
         while ! nc -z $$DB_HOST $${DB_PORT:-5432}; do sleep 1; done &&
         printenv > /etc/environment &&
-        { echo '0 2 * * * . /etc/environment; python /app/manage.py backup_to_telegram >> /proc/1/fd/1 2>&1';
+        { echo '* * * * * . /etc/environment; python /app/manage.py backup_to_telegram --force >> /proc/1/fd/1 2>&1';
           echo '0 3 * * * . /etc/environment; python /app/manage.py auto_rate_tickets >> /proc/1/fd/1 2>&1';
-          echo '0 6 1 * * . /etc/environment; python /app/manage.py monthly_report >> /proc/1/fd/1 2>&1';
+          echo '* * * * * . /etc/environment; python /app/manage.py monthly_report --force >> /proc/1/fd/1 2>&1';
         } | crontab - &&
         cron -f
       "
