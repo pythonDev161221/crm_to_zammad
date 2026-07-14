@@ -43,7 +43,7 @@ services:
           echo '0 3 * * * . /etc/environment; python /app/manage.py auto_rate_tickets >> /proc/1/fd/1 2>&1';
           echo '0 6 1 * * . /etc/environment; python /app/manage.py monthly_report >> /proc/1/fd/1 2>&1';
         } | crontab - &&
-        crond -f
+        cron -f
       "
 
   nginx:

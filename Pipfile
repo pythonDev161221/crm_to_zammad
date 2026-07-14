@@ -11,6 +11,7 @@ python-decouple = "*"
 requests = "*"
 djangorestframework-simplejwt = "*"
 pillow = "*"
+openpyxl = "*"
 
 [dev-packages]
 
